@@ -11,8 +11,8 @@ type OrgItem = {
 };
 
 type OrgResponse = {
-  selectedOrgId: string;
-  selectedOrgName: string;
+  selectedOrgId: string | null;
+  selectedOrgName: string | null;
   memberships: OrgItem[];
 };
 
@@ -52,6 +52,10 @@ export function OrgSwitcher() {
 
   if (!data) {
     return <p className="text-xs text-slate-500">Loading organizations...</p>;
+  }
+
+  if (!data.memberships.length || !data.selectedOrgId) {
+    return <p className="text-xs text-slate-500">No organizations</p>;
   }
 
   return (

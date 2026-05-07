@@ -2,6 +2,8 @@ import { getSql } from "@/lib/db";
 
 const DEFAULT_BOOTSTRAP_SLUG = "demo-company";
 const DEFAULT_BOOTSTRAP_NAME = "Demo organization";
+const ALLOW_AUTO_BOOTSTRAP_ALL_USERS =
+  process.env.ALLOW_AUTO_BOOTSTRAP_ALL_USERS?.toLowerCase() === "true";
 
 type EnsureParams = {
   authSubject: string;
@@ -10,8 +12,9 @@ type EnsureParams = {
 };
 
 /**
- * Upserts `public.users` from Clerk and ensures a membership in the bootstrap org
- * when the user has none (first admin login).
+ * Upserts `public.users` from Clerk. Membership bootstrap behavior:
+ * - default: only the first platform user is auto-bootstrapped as org_owner
+ * - optional legacy mode: all users auto-bootstrapped when ALLOW_AUTO_BOOTSTRAP_ALL_USERS=true
  */
 export async function ensureTenantAccess(params: EnsureParams) {
   const sql = getSql();
@@ -92,6 +95,16 @@ export async function ensureTenantAccess(params: EnsureParams) {
 
     if ((membershipRow?.n ?? 0) > 0) {
       return;
+    }
+
+    if (!ALLOW_AUTO_BOOTSTRAP_ALL_USERS) {
+      const [systemMemberships] = await tx<{ n: number }[]>`
+        select count(*)::int as n from public.memberships
+      `;
+      if ((systemMemberships?.n ?? 0) > 0) {
+        // New users must be invited once at least one organization already exists.
+        return;
+      }
     }
 
     await tx`

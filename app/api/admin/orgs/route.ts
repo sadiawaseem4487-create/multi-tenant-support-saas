@@ -26,8 +26,15 @@ export async function GET(request: Request) {
 
     const url = new URL(request.url);
     const orgId = url.searchParams.get("orgId");
-    const selected = await resolveOrgContext(userId, orgId);
     const memberships = await listMemberships(userId);
+    if (!memberships.length) {
+      return NextResponse.json({
+        selectedOrgId: null,
+        selectedOrgName: null,
+        memberships: [],
+      });
+    }
+    const selected = await resolveOrgContext(userId, orgId);
 
     return NextResponse.json({
       selectedOrgId: selected.orgId,

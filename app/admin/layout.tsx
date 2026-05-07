@@ -4,7 +4,7 @@ import { currentUser } from "@clerk/nextjs/server";
 import { AdminUserMenu } from "@/components/AdminUserMenu";
 import { OrgSwitcher } from "@/components/admin/OrgSwitcher";
 import { ensureTenantAccess } from "@/lib/auth-sync";
-import { getPrimaryMembership } from "@/lib/rbac";
+import { listMemberships } from "@/lib/rbac";
 
 export const metadata: Metadata = {
   title: "Admin | Company console",
@@ -15,6 +15,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const user = await currentUser();
   let orgName: string | null = null;
   let roleLabel: string | null = null;
+  let hasMembership = false;
 
   if (user) {
     await ensureTenantAccess({
@@ -23,9 +24,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       displayName: user.fullName ?? user.firstName ?? null,
     });
 
-    const membership = await getPrimaryMembership(user.id);
-    orgName = membership.orgName;
-    roleLabel = membership.role;
+    const memberships = await listMemberships(user.id);
+    if (memberships.length > 0) {
+      hasMembership = true;
+      orgName = memberships[0].orgName;
+      roleLabel = memberships[0].role;
+    }
   }
 
   const email =
@@ -51,7 +55,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             )}
           </div>
           <div className="flex flex-wrap items-center gap-3 sm:flex-nowrap sm:gap-4 sm:shrink-0">
-            {user ? <OrgSwitcher /> : null}
+            {user && hasMembership ? <OrgSwitcher /> : null}
             <Link
               href="/"
               className="text-sm font-medium text-teal-800 underline-offset-4 hover:underline"
@@ -62,7 +66,19 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           </div>
         </div>
       </header>
-      <div className="mx-auto max-w-5xl px-6 py-8">{children}</div>
+      <div className="mx-auto max-w-5xl px-6 py-8">
+        {user && !hasMembership ? (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-amber-900 shadow-sm">
+            <h2 className="text-lg font-semibold">No organization access yet</h2>
+            <p className="mt-2 text-sm">
+              Your account is signed in but is not a member of any organization yet. Ask an
+              organization owner to invite you from the Members panel.
+            </p>
+          </div>
+        ) : (
+          children
+        )}
+      </div>
     </div>
   );
 }
