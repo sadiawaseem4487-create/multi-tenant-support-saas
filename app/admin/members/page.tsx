@@ -1,7 +1,7 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { getSql } from "@/lib/db";
-import { getPrimaryMembership, requireRole } from "@/lib/rbac";
+import { requireRole, resolveOrgContext } from "@/lib/rbac";
 import { InviteMemberForm } from "@/components/admin/InviteMemberForm";
 
 type MemberRow = {
@@ -17,13 +17,18 @@ type InvitationRow = {
   expiresAt: string;
 };
 
-export default async function AdminMembersPage() {
+export default async function AdminMembersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ orgId?: string }>;
+}) {
   const user = await currentUser();
   if (!user) {
     redirect("/sign-in");
   }
 
-  const context = await getPrimaryMembership(user.id);
+  const { orgId } = await searchParams;
+  const context = await resolveOrgContext(user.id, orgId);
   await requireRole(context.orgId, "users:read", user.id);
 
   const sql = getSql();
@@ -73,7 +78,7 @@ export default async function AdminMembersPage() {
         </p>
       </div>
 
-      {canInvite ? <InviteMemberForm /> : null}
+      {canInvite ? <InviteMemberForm orgId={context.orgId} /> : null}
 
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <table className="min-w-full divide-y divide-slate-200">

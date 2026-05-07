@@ -1,7 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { randomBytes, createHash } from "node:crypto";
 import { NextResponse } from "next/server";
-import { getPrimaryMembership, requireRole, type MembershipRole } from "@/lib/rbac";
+import { requireRole, resolveOrgContext, type MembershipRole } from "@/lib/rbac";
 import { getSql } from "@/lib/db";
 
 const allowedRoles: MembershipRole[] = [
@@ -16,6 +16,7 @@ const allowedRoles: MembershipRole[] = [
 type InvitePayload = {
   email?: string;
   role?: MembershipRole;
+  orgId?: string;
 };
 
 type InviteWebhookPayload = {
@@ -89,7 +90,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Valid role is required." }, { status: 400 });
     }
 
-    const membership = await getPrimaryMembership(userId);
+    const membership = await resolveOrgContext(userId, body.orgId ?? null);
     const actor = await requireRole(membership.orgId, "users:invite", userId);
     const appBaseUrl = getAppBaseUrl(request);
 

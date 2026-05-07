@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { currentUser } from "@clerk/nextjs/server";
 import { AdminUserMenu } from "@/components/AdminUserMenu";
+import { OrgSwitcher } from "@/components/admin/OrgSwitcher";
 import { ensureTenantAccess } from "@/lib/auth-sync";
 import { getPrimaryMembership } from "@/lib/rbac";
 
@@ -50,12 +51,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             )}
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <Link
-              href="/admin/members"
-              className="text-sm font-medium text-teal-800 underline-offset-4 hover:underline"
-            >
-              Members
-            </Link>
+            {user ? <OrgSwitcher /> : null}
             <Link
               href="/"
               className="text-sm font-medium text-teal-800 underline-offset-4 hover:underline"

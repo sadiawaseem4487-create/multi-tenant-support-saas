@@ -24,7 +24,7 @@ type InviteResponse = {
   note: string;
 };
 
-export function InviteMemberForm() {
+export function InviteMemberForm({ orgId }: { orgId: string }) {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<(typeof roleOptions)[number]>("viewer");
   const [submitting, setSubmitting] = useState(false);
@@ -41,7 +41,7 @@ export function InviteMemberForm() {
       const response = await fetch("/api/admin/invitations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, role }),
+        body: JSON.stringify({ email, role, orgId }),
       });
       const data = (await response.json()) as InviteResponse | { error: string };
       if (!response.ok) {

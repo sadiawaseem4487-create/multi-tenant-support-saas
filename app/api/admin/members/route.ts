@@ -1,7 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { getSql } from "@/lib/db";
-import { getPrimaryMembership, requireRole } from "@/lib/rbac";
+import { requireRole, resolveOrgContext } from "@/lib/rbac";
 
 type MemberRow = {
   email: string;
@@ -16,14 +16,15 @@ type InvitationRow = {
   expiresAt: string;
 };
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const context = await getPrimaryMembership(userId);
+    const orgId = new URL(request.url).searchParams.get("orgId");
+    const context = await resolveOrgContext(userId, orgId);
     await requireRole(context.orgId, "users:read", userId);
 
     const sql = getSql();
