@@ -154,8 +154,9 @@ export async function POST(request: Request) {
       role,
       expiresAt: invitation?.expiresAt ?? null,
       inviteToken: rawToken,
+      inviteLink: `${appBaseUrl}/accept-invite?token=${rawToken}`,
       emailDelivery,
-      note: "Acceptance flow is next sprint work.",
+      note: "Recipient can accept via /accept-invite link.",
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unexpected error.";
