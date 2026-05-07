@@ -34,14 +34,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <div className="min-h-screen bg-slate-100">
       <header className="border-b border-slate-200 bg-white px-6 py-4">
-        <div className="mx-auto flex max-w-5xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mx-auto flex max-w-5xl flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-teal-700">
               Admin console
             </p>
             <h1 className="text-lg font-semibold text-slate-900">Operations</h1>
             {email ? (
-              <p className="text-sm text-slate-600">
+              <p className="text-sm text-slate-600 sm:max-w-[36rem]">
                 Signed in as {email}
                 {orgName ? ` · ${orgName}` : ""}
                 {roleLabel ? ` · ${roleLabel}` : ""}
@@ -50,14 +50,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               <p className="text-sm text-slate-600">Organization context loads after sign-in.</p>
             )}
           </div>
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3 sm:flex-nowrap sm:gap-4 sm:shrink-0">
             {user ? <OrgSwitcher /> : null}
-            <Link
-              href="/admin/organizations"
-              className="text-sm font-medium text-teal-800 underline-offset-4 hover:underline"
-            >
-              Organizations
-            </Link>
             <Link
               href="/"
               className="text-sm font-medium text-teal-800 underline-offset-4 hover:underline"

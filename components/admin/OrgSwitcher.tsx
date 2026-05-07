@@ -55,7 +55,7 @@ export function OrgSwitcher() {
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex items-center gap-2">
       <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Org</span>
       <select
         className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-sm text-slate-800"
