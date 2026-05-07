@@ -1,5 +1,16 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## SaaS product program
+
+**Plan and sprints** (vision, architecture, roles, backlog) live alongside this repo:
+
+- `../company costumer service/docs/SAAS_PRODUCT_PLAN.md`
+- `../company costumer service/docs/SPRINT_BACKLOG.md`
+
+**Engineering notes for this app:** [docs/ENGINEERING.md](./docs/ENGINEERING.md)
+
+**Admin stub (Sprint 0):** [http://localhost:3000/admin](http://localhost:3000/admin) — real auth comes in Sprint 1.
+
 ## Getting Started
 
 First, run the development server:
