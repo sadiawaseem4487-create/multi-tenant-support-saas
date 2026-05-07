@@ -53,6 +53,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <div className="flex flex-wrap items-center gap-3">
             {user ? <OrgSwitcher /> : null}
             <Link
+              href="/admin/organizations"
+              className="text-sm font-medium text-teal-800 underline-offset-4 hover:underline"
+            >
+              Organizations
+            </Link>
+            <Link
               href="/"
               className="text-sm font-medium text-teal-800 underline-offset-4 hover:underline"
             >
