@@ -14,7 +14,11 @@ type CreateOrgResponse = {
   memberships: OrgItem[];
 };
 
-export function OrganizationsPanel() {
+type OrganizationsPanelProps = {
+  canCreateOrganization: boolean;
+};
+
+export function OrganizationsPanel({ canCreateOrganization }: OrganizationsPanelProps) {
   const [name, setName] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -55,23 +59,30 @@ export function OrganizationsPanel() {
         </p>
       </div>
 
-      <form onSubmit={onCreate} className="flex flex-col gap-3 sm:flex-row">
-        <input
-          type="text"
-          required
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-          placeholder="Example: Acme Distribution"
-          className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none ring-teal-500/40 focus:ring"
-        />
-        <button
-          type="submit"
-          disabled={submitting}
-          className="rounded-xl bg-teal-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:bg-teal-400"
-        >
-          {submitting ? "Creating..." : "Create organization"}
-        </button>
-      </form>
+      {canCreateOrganization ? (
+        <form onSubmit={onCreate} className="flex flex-col gap-3 sm:flex-row">
+          <input
+            type="text"
+            required
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder="Example: Acme Distribution"
+            className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none ring-teal-500/40 focus:ring"
+          />
+          <button
+            type="submit"
+            disabled={submitting}
+            className="rounded-xl bg-teal-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:bg-teal-400"
+          >
+            {submitting ? "Creating..." : "Create organization"}
+          </button>
+        </form>
+      ) : (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          Your role does not allow creating organizations. Ask an organization owner/admin for
+          access.
+        </div>
+      )}
 
       {error ? <p className="text-sm text-rose-600">{error}</p> : null}
       {created ? (

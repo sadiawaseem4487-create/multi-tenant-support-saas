@@ -2,7 +2,7 @@ import { auth } from "@clerk/nextjs/server";
 import { randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
 import { getSql } from "@/lib/db";
-import { listMemberships, resolveOrgContext } from "@/lib/rbac";
+import { listMemberships, requireRole, resolveOrgContext } from "@/lib/rbac";
 
 type CreateOrgPayload = {
   name?: string;
@@ -56,6 +56,16 @@ export async function POST(request: Request) {
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const currentContext = await resolveOrgContext(userId, null);
+    try {
+      await requireRole(currentContext.orgId, "users:invite", userId);
+    } catch {
+      return NextResponse.json(
+        { error: "Forbidden: only organization owners/admins can create organizations." },
+        { status: 403 },
+      );
     }
 
     const body = (await request.json()) as CreateOrgPayload;
