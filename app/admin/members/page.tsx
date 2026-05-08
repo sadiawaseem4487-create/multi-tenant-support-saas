@@ -29,7 +29,21 @@ export default async function AdminMembersPage({
 
   const { orgId } = await searchParams;
   const context = await resolveOrgContext(user.id, orgId);
-  await requireRole(context.orgId, "users:read", user.id);
+  try {
+    await requireRole(context.orgId, "users:read", user.id);
+  } catch {
+    return (
+      <section className="space-y-6">
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 shadow-sm">
+          <h2 className="text-xl font-semibold text-amber-900">No access to Members</h2>
+          <p className="mt-2 text-sm text-amber-800">
+            Your current role in <strong>{context.orgName}</strong> does not include member
+            management permission.
+          </p>
+        </div>
+      </section>
+    );
+  }
 
   const sql = getSql();
   if (!sql) {
