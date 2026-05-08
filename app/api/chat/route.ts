@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
+import { resolveOrgContext } from "@/lib/rbac";
 
 type N8nChatResponse = {
   answer?: string;
@@ -18,6 +20,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const message = typeof body?.message === "string" ? body.message.trim() : "";
+    const requestedOrgId = typeof body?.orgId === "string" ? body.orgId : null;
 
     if (!message) {
       return NextResponse.json({ error: "message is required" }, { status: 400 });
@@ -26,6 +29,22 @@ export async function POST(req: NextRequest) {
     const webhookUrl = process.env.N8N_WEBHOOK_URL;
     const companyName = process.env.COMPANY_NAME ?? "NovaCompany";
     const webhookSecret = process.env.WEBHOOK_SECRET?.trim();
+    const { userId } = await auth();
+
+    let orgContext:
+      | {
+          orgId: string;
+          orgName: string;
+        }
+      | null = null;
+    if (userId) {
+      try {
+        const resolved = await resolveOrgContext(userId, requestedOrgId);
+        orgContext = { orgId: resolved.orgId, orgName: resolved.orgName };
+      } catch {
+        orgContext = null;
+      }
+    }
 
     if (!webhookUrl) {
       return NextResponse.json(
@@ -43,6 +62,9 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({
         question: message,
         company_name: companyName,
+        org_id: orgContext?.orgId ?? null,
+        org_name: orgContext?.orgName ?? null,
+        correlation_id: crypto.randomUUID(),
       }),
       cache: "no-store",
     });

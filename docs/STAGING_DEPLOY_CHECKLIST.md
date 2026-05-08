@@ -26,6 +26,7 @@ Set these in Vercel project settings for the staging environment:
 - `CLERK_SECRET_KEY`
 - `DATABASE_URL`
 - `N8N_WEBHOOK_URL`
+- `INGEST_WEBHOOK_URL`
 - `INVITE_WEBHOOK_URL` (optional but recommended)
 - `WEBHOOK_SECRET` (same secret expected by n8n)
 - `COMPANY_NAME`
@@ -55,8 +56,12 @@ In Clerk for the staging app/instance:
 ## 6) n8n webhook checks
 
 - `N8N_WEBHOOK_URL` workflow is active and returns `answer`/`Answer`.
+- `INGEST_WEBHOOK_URL` workflow is active, accepts `job_id` + `org_id`, and starts ingest processing.
+- Ingest workflow calls back `PATCH /api/internal/ingest-jobs/:jobId` with `X-Webhook-Secret` and status updates.
 - `INVITE_WEBHOOK_URL` workflow is active and sends email.
 - If `WEBHOOK_SECRET` is configured, n8n validates `X-Webhook-Secret`.
+- Chat workflow input should read `org_id` (when provided) and pass it into vector retrieval filters (`match_documents` by tenant).
+- Keep `correlation_id` in logs for request tracing from Next.js -> n8n.
 
 ## 7) Smoke test after deploy
 
@@ -71,3 +76,4 @@ In Clerk for the staging app/instance:
 
 - Record staging URL in sprint/backlog docs.
 - Save deployment date and commit SHA in release notes.
+- Confirm webhook secret rotation policy from `docs/WEBHOOK_SECURITY_ROTATION.md`.

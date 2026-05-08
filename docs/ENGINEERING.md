@@ -16,10 +16,13 @@ If paths differ on your machine, open the `company costumer service` repo and re
 | `app/page.tsx` | Public marketing + floating chat |
 | `app/admin/*` | Admin console (Clerk required via `proxy.ts`) |
 | `app/admin/members/page.tsx` | Org member list (RBAC: `users:read`) |
+| `app/admin/knowledge/page.tsx` | Ingest launch + job history UI (RBAC: `kb:read`, `kb:write`) |
 | `app/api/admin/members/route.ts` | Members/invite data API (`users:read`) |
 | `app/api/admin/invitations/route.ts` | Invitation API (`users:invite`) |
+| `app/api/orgs/[orgId]/ingest/route.ts` | Create ingest job + dispatch n8n workflow (`kb:write`) |
+| `app/api/internal/ingest-jobs/[jobId]/route.ts` | n8n callback to update ingest job status (`PATCH`, webhook-secret protected) |
 | `app/sign-in`, `app/sign-up` | Clerk hosted auth routes |
-| `app/api/chat/route.ts` | Server proxy to n8n webhook |
+| `app/api/chat/route.ts` | Server proxy to n8n webhook (`question`, `company_name`, `org_id`, `correlation_id`) |
 | `proxy.ts` | `auth.protect()` for `/admin` only |
 | `lib/auth-sync.ts` | Upsert `public.users`, bootstrap org + `org_owner` membership |
 | `lib/rbac.ts` | `getPrimaryMembership`, `requireRole(orgId, perm, authSubject)` |
@@ -46,6 +49,7 @@ app/
 
 **`/admin`** is protected by Clerk; the admin layout syncs the signed-in user to Postgres and attaches them to `BOOTSTRAP_ORG_SLUG` (default `demo-company`) as `org_owner` when they have no memberships.
 **RBAC:** `lib/rbac.ts` enforces role permissions server-side (current usage: `users:read` on `/admin/members`).
+**Tenant chat context:** when a signed-in user calls `/api/chat`, the route resolves organization context and forwards `org_id` to n8n so vector retrieval can be scoped per tenant.
 **Invites:** `/api/admin/invitations` writes invitation tokens to `public.invitations`; `/admin/members` includes invite form + pending invite list.
 If `INVITE_WEBHOOK_URL` is set, the API also POSTs invite payload to n8n (reuses `WEBHOOK_SECRET` as optional `X-Webhook-Secret` header).
 Manual verification matrix: `docs/RBAC_MANUAL_TEST_MATRIX.md`.
@@ -73,3 +77,4 @@ OLTP + vector alignment SQL lives in the program repo:
 
 - n8n workflows: document IDs in program repo or internal wiki when stable.
 - staging deployment runbook: `docs/STAGING_DEPLOY_CHECKLIST.md`.
+- webhook auth/rotation runbook: `docs/WEBHOOK_SECURITY_ROTATION.md`.
