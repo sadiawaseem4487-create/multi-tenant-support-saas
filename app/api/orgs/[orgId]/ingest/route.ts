@@ -110,78 +110,93 @@ export async function POST(
         to_char(created_at at time zone 'utc', 'YYYY-MM-DD HH24:MI:SS') as "createdAt"
     `;
 
-    const ingestWebhookUrl = process.env.INGEST_WEBHOOK_URL;
-    const webhookSecret = process.env.WEBHOOK_SECRET?.trim();
-    if (!ingestWebhookUrl) {
+    try {
+      const ingestWebhookUrl = process.env.INGEST_WEBHOOK_URL;
+      const webhookSecret = process.env.WEBHOOK_SECRET?.trim();
+      if (!ingestWebhookUrl) {
+        throw new Error("INGEST_WEBHOOK_URL is not configured.");
+      }
+
+      let upstream: Response;
+      try {
+        upstream = await fetch(ingestWebhookUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(webhookSecret ? { "X-Webhook-Secret": webhookSecret } : {}),
+          },
+          body: JSON.stringify({
+            job_id: job.id,
+            org_id: orgId,
+            source,
+            payload,
+            correlation_id: correlationId,
+            requested_by: userId,
+          }),
+          cache: "no-store",
+        });
+      } catch (fetchError) {
+        const cause =
+          fetchError instanceof Error && "cause" in fetchError && fetchError.cause
+            ? ` (${(fetchError.cause as { code?: string; message?: string }).code ?? ""} ${
+                (fetchError.cause as { code?: string; message?: string }).message ?? ""
+              })`
+            : "";
+        throw new Error(
+          `Network call to ingest webhook failed: ${
+            fetchError instanceof Error ? fetchError.message : "unknown"
+          }${cause}`,
+        );
+      }
+
+      if (!upstream.ok) {
+        const raw = await upstream.text().catch(() => "");
+        const errorText = raw ? raw.slice(0, 1000) : `Webhook failed (${upstream.status}).`;
+        throw new Error(`n8n returned HTTP ${upstream.status}: ${errorText}`);
+      }
+
+      const responseText = await upstream.text().catch(() => "");
+      let executionId: string | null = null;
+      try {
+        const parsed = responseText
+          ? (JSON.parse(responseText) as Record<string, unknown>)
+          : null;
+        const candidate = parsed?.executionId ?? parsed?.execution_id ?? parsed?.id;
+        executionId = typeof candidate === "string" ? candidate : null;
+      } catch {
+        executionId = null;
+      }
+
       await sql`
         update public.ingest_jobs
-        set status = 'failed', error = 'INGEST_WEBHOOK_URL is not configured.', updated_at = now()
+        set
+          status = 'running',
+          n8n_execution_id = ${executionId},
+          updated_at = now()
         where id = ${job.id}::uuid
       `;
-      return NextResponse.json(
-        { error: "INGEST_WEBHOOK_URL is not configured.", jobId: job.id },
-        { status: 500 },
-      );
-    }
 
-    const upstream = await fetch(ingestWebhookUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(webhookSecret ? { "X-Webhook-Secret": webhookSecret } : {}),
-      },
-      body: JSON.stringify({
-        job_id: job.id,
-        org_id: orgId,
+      return NextResponse.json({
+        jobId: job.id,
+        status: "running",
+        orgId,
         source,
-        payload,
-        correlation_id: correlationId,
-        requested_by: userId,
-      }),
-      cache: "no-store",
-    });
-
-    if (!upstream.ok) {
-      const raw = await upstream.text();
-      const errorText = raw ? raw.slice(0, 1000) : `Webhook failed (${upstream.status}).`;
+        correlationId,
+        n8nExecutionId: executionId,
+      });
+    } catch (dispatchError) {
+      const dispatchMessage =
+        dispatchError instanceof Error ? dispatchError.message : "Ingest dispatch failed.";
       await sql`
         update public.ingest_jobs
-        set status = 'failed', error = ${errorText}, updated_at = now()
+        set status = 'failed', error = ${dispatchMessage.slice(0, 1000)}, updated_at = now()
         where id = ${job.id}::uuid
       `;
       return NextResponse.json(
-        { error: "Failed to dispatch ingest job to n8n.", details: errorText, jobId: job.id },
+        { error: dispatchMessage, jobId: job.id },
         { status: 502 },
       );
     }
-
-    const responseText = await upstream.text();
-    let executionId: string | null = null;
-    try {
-      const parsed = responseText ? (JSON.parse(responseText) as Record<string, unknown>) : null;
-      const candidate = parsed?.executionId ?? parsed?.execution_id ?? parsed?.id;
-      executionId = typeof candidate === "string" ? candidate : null;
-    } catch {
-      executionId = null;
-    }
-
-    await sql`
-      update public.ingest_jobs
-      set
-        status = 'running',
-        n8n_execution_id = ${executionId},
-        updated_at = now()
-      where id = ${job.id}::uuid
-    `;
-
-    return NextResponse.json({
-      jobId: job.id,
-      status: "running",
-      orgId,
-      source,
-      correlationId,
-      n8nExecutionId: executionId,
-    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unexpected error.";
     if (isForbiddenError(message)) {
