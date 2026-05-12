@@ -77,6 +77,12 @@ export function OrgSwitcher() {
         ))}
       </select>
       <Link
+        href={`/admin?orgId=${encodeURIComponent(data.selectedOrgId)}`}
+        className="text-sm font-medium text-teal-800 underline-offset-4 hover:underline"
+      >
+        Home
+      </Link>
+      <Link
         href={`/admin/members?orgId=${encodeURIComponent(data.selectedOrgId)}`}
         className="text-sm font-medium text-teal-800 underline-offset-4 hover:underline"
       >
