@@ -150,6 +150,8 @@ export async function POST(req: NextRequest) {
                 assistant_name: chatConfig.assistantName,
                 persona: chatConfig.persona,
                 fallback_message: chatConfig.fallbackMessage,
+                language_policy: chatConfig.languagePolicy,
+                show_citations: chatConfig.showCitations,
               },
             }
           : {}),

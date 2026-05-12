@@ -13,10 +13,20 @@ each request to n8n with an extra `chat_config` object:
   "chat_config": {
     "assistant_name": "Aria",
     "persona": "You are friendly, concise, and address the user formally.",
-    "fallback_message": "I don't have that information yet. Email support@acme.com."
+    "fallback_message": "I don't have that information yet. Email support@acme.com.",
+    "language_policy": "match-user",
+    "show_citations": false
   }
 }
 ```
+
+`language_policy` is one of:
+- `match-user` — reply in whichever language the visitor's question is in (default)
+- `english-only` — always reply in English regardless of input language
+- `original-language` — reply in the language of the knowledge-base content
+
+`show_citations` — when `true`, the assistant should append a short
+"Sources:" list referencing the retrieved chunks.
 
 To make the LLM actually USE this config, two nodes in the chat path need
 small edits.
@@ -43,6 +53,16 @@ const assistantName = cfg.assistant_name || orgName;
 const persona = (cfg.persona || '').trim();
 const fallback = (cfg.fallback_message || "I don't have that information in my knowledge base yet.").trim();
 
+const languageRule = ({
+  'match-user': 'Reply in the same language as the visitor\u2019s question.',
+  'english-only': 'Always reply in English regardless of the visitor\u2019s language.',
+  'original-language': 'Reply in the language of the knowledge-base content.',
+}[cfg.language_policy]) || 'Reply in the same language as the visitor\u2019s question.';
+
+const citationsRule = cfg.show_citations
+  ? 'At the end of the answer, add a short list titled "Sources:" referencing the most relevant context chunks by their Source number.'
+  : 'Do not list sources or citations.';
+
 const systemPrompt = [
   `You are ${assistantName}, the support assistant for ${orgName}.`,
   persona,
@@ -50,6 +70,9 @@ const systemPrompt = [
   'Answer ONLY using the provided context.',
   'If the context is empty or insufficient, respond with this exact message:',
   fallback,
+  '',
+  languageRule,
+  citationsRule,
 ].filter(Boolean).join('\n');
 
 return [

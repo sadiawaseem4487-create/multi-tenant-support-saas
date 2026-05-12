@@ -12,6 +12,7 @@ type OrgRow = {
   brandName: string | null;
   brandTagline: string | null;
   brandLogoUrl: string | null;
+  brandPrimaryColor: string | null;
   settings: Record<string, unknown> | null;
 };
 
@@ -28,6 +29,7 @@ async function loadOrgBySlug(slug: string): Promise<OrgRow | null> {
       (settings->>'brandName') as "brandName",
       (settings->>'brandTagline') as "brandTagline",
       (settings->>'brandLogoUrl') as "brandLogoUrl",
+      (settings->>'brandPrimaryColor') as "brandPrimaryColor",
       settings
     from public.orgs
     where site_slug = ${normalized}
@@ -66,6 +68,8 @@ export default async function PublicOrgSite({
   const tagline = org.brandTagline ?? "Customer support assistant";
   const initial = brandName.charAt(0).toUpperCase();
   const chatConfig = readChatConfig(org.settings?.chat, brandName);
+  const primaryColor = org.brandPrimaryColor?.trim() || null;
+  const logoBgStyle = primaryColor ? { background: primaryColor } : undefined;
 
   return (
     <div className="chat-page-bg min-h-screen">
@@ -80,7 +84,10 @@ export default async function PublicOrgSite({
                 className="h-10 w-10 rounded-xl object-cover shadow-md ring-1 ring-slate-200"
               />
             ) : (
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500 to-sky-600 text-lg font-bold text-white shadow-md">
+              <span
+                className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500 to-sky-600 text-lg font-bold text-white shadow-md"
+                style={logoBgStyle}
+              >
                 {initial}
               </span>
             )}
@@ -111,6 +118,7 @@ export default async function PublicOrgSite({
                 greeting: chatConfig.greeting,
                 suggestions: chatConfig.suggestions,
               }}
+              primaryColor={primaryColor}
             />
           </div>
         </section>

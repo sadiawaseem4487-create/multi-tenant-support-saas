@@ -5,6 +5,7 @@ type Props = {
   brandName: string;
   brandTagline: string;
   chatConfig?: SupportChatConfig;
+  primaryColor?: string | null;
 };
 
 export function PublicSiteChat({
@@ -12,6 +13,7 @@ export function PublicSiteChat({
   brandName,
   brandTagline,
   chatConfig,
+  primaryColor,
 }: Props) {
   return (
     <SupportChat
@@ -19,6 +21,7 @@ export function PublicSiteChat({
       brandTagline={brandTagline}
       siteSlug={siteSlug}
       chatConfig={chatConfig}
+      primaryColor={primaryColor}
     />
   );
 }

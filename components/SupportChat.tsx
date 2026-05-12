@@ -64,6 +64,8 @@ type Props = {
   siteSlug?: string;
   /** Per-org chat behavior (assistant name, greeting, suggestions). */
   chatConfig?: SupportChatConfig;
+  /** Hex color (#RRGGBB) — themes chat accents. Falls back to teal gradient. */
+  primaryColor?: string | null;
 };
 
 export function SupportChat({
@@ -72,6 +74,7 @@ export function SupportChat({
   variant = "default",
   siteSlug,
   chatConfig,
+  primaryColor,
 }: Props) {
   const floating = variant === "floating";
 
@@ -84,6 +87,12 @@ export function SupportChat({
         prompt: q,
       }))
     : defaultSuggestions(assistantName);
+
+  const tint = primaryColor?.trim() || null;
+  const accentStyle = tint ? { background: tint } : undefined;
+  const accentBorderStyle = tint
+    ? { borderColor: tint, color: tint }
+    : undefined;
 
   const [messages, setMessages] = useState<ChatMessage[]>([
     { role: "bot", text: greetingText },
@@ -161,6 +170,7 @@ export function SupportChat({
           <div className="flex items-start gap-3">
             <div
               className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500 to-sky-600 text-base font-bold text-white shadow-md ring-2 ring-white/30"
+              style={accentStyle}
               aria-hidden
             >
               {assistantName.charAt(0).toUpperCase()}
@@ -192,10 +202,14 @@ export function SupportChat({
                   ? "max-w-[90%] rounded-2xl rounded-br-md bg-gradient-to-br from-teal-600 to-cyan-700 px-3 py-2 text-xs leading-relaxed text-white shadow-md shadow-teal-900/20 sm:text-sm"
                   : "max-w-[90%] rounded-2xl rounded-bl-md border border-slate-200/90 bg-white px-3 py-2 text-xs leading-relaxed text-slate-800 shadow-sm sm:text-sm"
               }
+              style={m.role === "user" ? accentStyle : undefined}
             >
               {m.role === "bot" && (
                 <div className="mb-1.5 flex items-center gap-2">
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-teal-500 to-sky-600 text-[10px] font-bold text-white">
+                  <span
+                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-teal-500 to-sky-600 text-[10px] font-bold text-white"
+                    style={accentStyle}
+                  >
                     AI
                   </span>
                   <span className="text-[10px] font-semibold text-slate-500 sm:text-xs">
@@ -239,6 +253,7 @@ export function SupportChat({
               type="button"
               disabled={loading}
               onClick={() => onSuggestionClick(s.prompt)}
+              style={accentBorderStyle}
               className="max-sm:shrink-0 rounded-full border border-teal-200/80 bg-white px-2.5 py-1.5 text-left text-[10px] font-medium text-teal-900 shadow-sm transition hover:border-teal-300 hover:bg-teal-50/80 disabled:cursor-not-allowed disabled:opacity-50 sm:px-3 sm:text-xs"
             >
               {s.label}
@@ -258,6 +273,7 @@ export function SupportChat({
           <button
             type="submit"
             disabled={loading}
+            style={accentStyle}
             className="shrink-0 rounded-xl bg-gradient-to-br from-teal-600 to-cyan-700 px-4 py-2.5 text-xs font-semibold text-white shadow-lg transition hover:from-teal-500 hover:to-cyan-600 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:text-sm"
           >
             Send
