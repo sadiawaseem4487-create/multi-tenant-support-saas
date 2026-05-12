@@ -49,12 +49,15 @@ type Props = {
   brandTagline: string;
   /** Use inside floating widget: no outer card chrome, fills panel height */
   variant?: "default" | "floating";
+  /** Public site slug; sent to /api/chat to resolve org_id for anonymous visitors. */
+  siteSlug?: string;
 };
 
 export function SupportChat({
   brandName,
   brandTagline,
   variant = "default",
+  siteSlug,
 }: Props) {
   const floating = variant === "floating";
 
@@ -82,7 +85,10 @@ export function SupportChat({
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: trimmed }),
+        body: JSON.stringify({
+          message: trimmed,
+          ...(siteSlug ? { siteSlug } : {}),
+        }),
       });
       const data = await res.json().catch(() => ({}));
 
@@ -102,7 +108,7 @@ export function SupportChat({
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [siteSlug]);
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
