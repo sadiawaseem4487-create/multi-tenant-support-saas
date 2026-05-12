@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getSql } from "@/lib/db";
 import { requireRole, resolveOrgContext } from "@/lib/rbac";
 import { logAudit } from "@/lib/audit";
+import { readChatConfig, validateChatPatch } from "@/lib/chat-config";
 
 type SettingsBody = {
   orgId?: string;
@@ -11,6 +12,7 @@ type SettingsBody = {
   brandName?: string | null;
   brandTagline?: string | null;
   brandLogoUrl?: string | null;
+  chat?: unknown;
 };
 
 type OrgSettingsRow = {
@@ -55,6 +57,8 @@ export async function GET(request: Request) {
     `;
     if (!row) return jsonError("Organization not found.", 404);
 
+    const brandNameStored =
+      (row.settings?.brandName as string | undefined) ?? null;
     return NextResponse.json({
       orgId: row.id,
       name: row.name,
@@ -62,10 +66,11 @@ export async function GET(request: Request) {
       siteSlug: row.siteSlug,
       plan: row.plan,
       branding: {
-        brandName: (row.settings?.brandName as string | undefined) ?? null,
+        brandName: brandNameStored,
         brandTagline: (row.settings?.brandTagline as string | undefined) ?? null,
         brandLogoUrl: (row.settings?.brandLogoUrl as string | undefined) ?? null,
       },
+      chat: readChatConfig(row.settings?.chat, brandNameStored ?? row.name),
       role: context.role,
     });
   } catch (error) {
@@ -146,6 +151,31 @@ export async function PATCH(request: Request) {
       }
     }
 
+    let chatPatchKeys: string[] = [];
+    let mergedChat: Record<string, unknown> | undefined;
+    if (body.chat !== undefined) {
+      const result = validateChatPatch(body.chat);
+      if (!result.ok) return jsonError(result.error, 400);
+      chatPatchKeys = Object.keys(result.patch);
+      if (chatPatchKeys.length > 0) {
+        const [existing] = await sql<{ chat: Record<string, unknown> | null }[]>`
+          select (settings->'chat') as chat
+          from public.orgs
+          where id = ${context.orgId}::uuid
+          limit 1
+        `;
+        const base = (existing?.chat ?? {}) as Record<string, unknown>;
+        mergedChat = { ...base };
+        for (const [k, v] of Object.entries(result.patch)) {
+          if (v === null) delete mergedChat[k];
+          else mergedChat[k] = v;
+        }
+      }
+    }
+
+    const settingsMerge: Record<string, unknown> = { ...brandUpdates };
+    if (mergedChat) settingsMerge.chat = mergedChat;
+
     const [updated] = await sql<OrgSettingsRow[]>`
       update public.orgs
       set
@@ -153,7 +183,7 @@ export async function PATCH(request: Request) {
         site_slug = case when ${normalizedSiteSlug !== undefined}::boolean
                          then ${normalizedSiteSlug ?? null}::text
                          else site_slug end,
-        settings = coalesce(settings, '{}'::jsonb) || ${JSON.stringify(brandUpdates)}::jsonb,
+        settings = coalesce(settings, '{}'::jsonb) || ${JSON.stringify(settingsMerge)}::jsonb,
         updated_at = now()
       where id = ${context.orgId}::uuid
       returning id, name, slug, site_slug as "siteSlug", plan, settings
@@ -171,9 +201,12 @@ export async function PATCH(request: Request) {
         nameChanged: name !== undefined,
         siteSlugChanged: normalizedSiteSlug !== undefined,
         brandingKeys: Object.keys(brandUpdates),
+        chatKeys: chatPatchKeys,
       },
     });
 
+    const brandNameStored =
+      (updated.settings?.brandName as string | undefined) ?? null;
     return NextResponse.json({
       orgId: updated.id,
       name: updated.name,
@@ -181,10 +214,11 @@ export async function PATCH(request: Request) {
       siteSlug: updated.siteSlug,
       plan: updated.plan,
       branding: {
-        brandName: (updated.settings?.brandName as string | undefined) ?? null,
+        brandName: brandNameStored,
         brandTagline: (updated.settings?.brandTagline as string | undefined) ?? null,
         brandLogoUrl: (updated.settings?.brandLogoUrl as string | undefined) ?? null,
       },
+      chat: readChatConfig(updated.settings?.chat, brandNameStored ?? updated.name),
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unexpected error.";

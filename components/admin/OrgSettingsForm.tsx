@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { CHAT_LIMITS, type ChatConfig } from "@/lib/chat-config";
 
 type Props = {
   orgId: string;
@@ -14,6 +15,7 @@ type Props = {
     brandName: string;
     brandTagline: string;
     brandLogoUrl: string;
+    chat: ChatConfig;
   };
 };
 
@@ -24,6 +26,13 @@ export function OrgSettingsForm({ orgId, canEdit, initial }: Props) {
   const [brandName, setBrandName] = useState(initial.brandName);
   const [brandTagline, setBrandTagline] = useState(initial.brandTagline);
   const [brandLogoUrl, setBrandLogoUrl] = useState(initial.brandLogoUrl);
+  const [assistantName, setAssistantName] = useState(initial.chat.assistantName);
+  const [persona, setPersona] = useState(initial.chat.persona);
+  const [greeting, setGreeting] = useState(initial.chat.greeting);
+  const [suggestionsText, setSuggestionsText] = useState(
+    initial.chat.suggestions.join("\n"),
+  );
+  const [fallbackMessage, setFallbackMessage] = useState(initial.chat.fallbackMessage);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -36,6 +45,11 @@ export function OrgSettingsForm({ orgId, canEdit, initial }: Props) {
     setMessage(null);
     setSubmitting(true);
     try {
+      const suggestions = suggestionsText
+        .split("\n")
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .slice(0, CHAT_LIMITS.suggestionMax);
       const res = await fetch("/api/admin/orgs/settings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -46,6 +60,13 @@ export function OrgSettingsForm({ orgId, canEdit, initial }: Props) {
           brandName: brandName.trim() ? brandName : null,
           brandTagline: brandTagline.trim() ? brandTagline : null,
           brandLogoUrl: brandLogoUrl.trim() ? brandLogoUrl : null,
+          chat: {
+            assistantName: assistantName.trim() ? assistantName.trim() : null,
+            persona: persona.trim() ? persona : null,
+            greeting: greeting.trim() ? greeting : null,
+            suggestions,
+            fallbackMessage: fallbackMessage.trim() ? fallbackMessage : null,
+          },
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -172,6 +193,94 @@ export function OrgSettingsForm({ orgId, canEdit, initial }: Props) {
             placeholder="https://example.com/logo.png"
             className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-teal-400 focus:ring-2 focus:ring-teal-200/60 disabled:bg-slate-50"
           />
+        </label>
+      </div>
+
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
+        <div>
+          <h3 className="text-base font-semibold text-slate-900">Chat behavior</h3>
+          <p className="mt-1 text-xs text-slate-500">
+            Controls how your assistant introduces itself, what it suggests, and
+            how it talks. Everything here is per-organization.
+          </p>
+        </div>
+
+        <label className="flex flex-col gap-1 text-xs font-medium text-slate-700">
+          Assistant name
+          <input
+            type="text"
+            value={assistantName}
+            onChange={(e) => setAssistantName(e.target.value)}
+            disabled={!canEdit}
+            placeholder={brandName || initial.name}
+            maxLength={CHAT_LIMITS.assistantName}
+            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-teal-400 focus:ring-2 focus:ring-teal-200/60 disabled:bg-slate-50"
+          />
+          <span className="text-[11px] text-slate-500">
+            Shown in the chat header and avatar. Leave empty to use the brand name.
+          </span>
+        </label>
+
+        <label className="flex flex-col gap-1 text-xs font-medium text-slate-700">
+          Persona (system prompt)
+          <textarea
+            value={persona}
+            onChange={(e) => setPersona(e.target.value)}
+            disabled={!canEdit}
+            rows={4}
+            maxLength={CHAT_LIMITS.persona}
+            placeholder="e.g. You are friendly, concise, and professional. Always address the user formally."
+            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-teal-400 focus:ring-2 focus:ring-teal-200/60 disabled:bg-slate-50"
+          />
+          <span className="text-[11px] text-slate-500">
+            Appended to the system prompt of every chat response (max{" "}
+            {CHAT_LIMITS.persona} chars).
+          </span>
+        </label>
+
+        <label className="flex flex-col gap-1 text-xs font-medium text-slate-700">
+          Greeting message
+          <textarea
+            value={greeting}
+            onChange={(e) => setGreeting(e.target.value)}
+            disabled={!canEdit}
+            rows={4}
+            maxLength={CHAT_LIMITS.greeting}
+            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-teal-400 focus:ring-2 focus:ring-teal-200/60 disabled:bg-slate-50"
+          />
+          <span className="text-[11px] text-slate-500">
+            First message visitors see when they open the chat.
+          </span>
+        </label>
+
+        <label className="flex flex-col gap-1 text-xs font-medium text-slate-700">
+          Suggested questions (one per line, up to {CHAT_LIMITS.suggestionMax})
+          <textarea
+            value={suggestionsText}
+            onChange={(e) => setSuggestionsText(e.target.value)}
+            disabled={!canEdit}
+            rows={6}
+            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-teal-400 focus:ring-2 focus:ring-teal-200/60 disabled:bg-slate-50"
+          />
+          <span className="text-[11px] text-slate-500">
+            Quick-tap chips above the chat input. One question per line.
+          </span>
+        </label>
+
+        <label className="flex flex-col gap-1 text-xs font-medium text-slate-700">
+          Fallback message
+          <textarea
+            value={fallbackMessage}
+            onChange={(e) => setFallbackMessage(e.target.value)}
+            disabled={!canEdit}
+            rows={3}
+            maxLength={CHAT_LIMITS.fallbackMessage}
+            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-teal-400 focus:ring-2 focus:ring-teal-200/60 disabled:bg-slate-50"
+          />
+          <span className="text-[11px] text-slate-500">
+            Used when the assistant has no information to answer from your
+            knowledge base.
+          </span>
         </label>
       </div>
 

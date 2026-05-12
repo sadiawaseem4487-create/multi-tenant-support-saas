@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getSql } from "@/lib/db";
 import { resolveOrgContext } from "@/lib/rbac";
 import { OrgSettingsForm } from "@/components/admin/OrgSettingsForm";
+import { readChatConfig } from "@/lib/chat-config";
 
 type SettingsRow = {
   id: string;
@@ -58,6 +59,10 @@ export default async function AdminSettingsPage({
           brandName: (row.settings?.brandName as string | undefined) ?? "",
           brandTagline: (row.settings?.brandTagline as string | undefined) ?? "",
           brandLogoUrl: (row.settings?.brandLogoUrl as string | undefined) ?? "",
+          chat: readChatConfig(
+            row.settings?.chat,
+            (row.settings?.brandName as string | undefined) ?? row.name,
+          ),
         }}
       />
     </section>
