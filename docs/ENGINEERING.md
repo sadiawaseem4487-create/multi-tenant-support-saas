@@ -63,18 +63,29 @@ See `.env.example`. Public branding uses `NEXT_PUBLIC_*`. Server-only secrets mu
 - **Tenant context:** eventual middleware sets `orgId` from session; all server mutations check RBAC.
 - **n8n:** call webhooks with `X-Webhook-Signature` (or IdP) once Sprint 2 hardens integrations.
 
-## Database (Sprint 0 v0)
+## Database (Sprint 0–2)
 
 OLTP + vector alignment SQL lives in the program repo:
 
 - `docs/schema-v0.sql` — `orgs`, `users`, `memberships`, `invitations`, `ingest_jobs`, `kb_documents`, `audit_logs`
 - `docs/schema-v0-alter-vectors.sql` — add `org_id` to existing `documents` vector table
+- `docs/schema-v0.2-match-documents-tenant.sql` — tenant-aware `match_documents` RPC (fail-closed on null `tenant_org_id`)
 - `docs/DATA_MODEL.md` — ERD (Mermaid)
 
 **Next.js:** set `DATABASE_URL` (Supabase pooler URI recommended). The app uses `postgres.js` for the admin identity sync only; add Drizzle/Prisma later if you want typed queries.
 
+## n8n workflows
+
+Versioned templates and narratives in the program repo:
+
+- `docs/n8n/INGEST_WORKFLOW.md` + `ingest-workflow.template.json` — tenant-aware ingest (stamps `org_id` on every chunk; PATCH callback to `/api/internal/ingest-jobs/:jobId`).
+- `docs/n8n/CHAT_RAG_WORKFLOW.md` + `chat-rag-workflow.template.json` — tenant-aware RAG retrieval (passes `tenant_org_id` to `match_documents`; fail-closed when missing).
+
+## Verification
+
+- Sprint 2 exit-criteria checklist: `docs/SPRINT2_VERIFICATION.md`.
+
 ## Related
 
-- n8n workflows: document IDs in program repo or internal wiki when stable.
 - staging deployment runbook: `docs/STAGING_DEPLOY_CHECKLIST.md`.
 - webhook auth/rotation runbook: `docs/WEBHOOK_SECURITY_ROTATION.md`.
