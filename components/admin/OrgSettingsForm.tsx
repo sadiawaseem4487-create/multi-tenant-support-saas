@@ -2,7 +2,13 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { CHAT_LIMITS, type ChatConfig } from "@/lib/chat-config";
+import {
+  CHAT_LIMITS,
+  LANGUAGE_POLICIES,
+  LANGUAGE_POLICY_LABELS,
+  type ChatConfig,
+  type LanguagePolicy,
+} from "@/lib/chat-config";
 
 type Props = {
   orgId: string;
@@ -15,6 +21,7 @@ type Props = {
     brandName: string;
     brandTagline: string;
     brandLogoUrl: string;
+    brandPrimaryColor: string;
     chat: ChatConfig;
   };
 };
@@ -26,6 +33,9 @@ export function OrgSettingsForm({ orgId, canEdit, initial }: Props) {
   const [brandName, setBrandName] = useState(initial.brandName);
   const [brandTagline, setBrandTagline] = useState(initial.brandTagline);
   const [brandLogoUrl, setBrandLogoUrl] = useState(initial.brandLogoUrl);
+  const [brandPrimaryColor, setBrandPrimaryColor] = useState(
+    initial.brandPrimaryColor || "",
+  );
   const [assistantName, setAssistantName] = useState(initial.chat.assistantName);
   const [persona, setPersona] = useState(initial.chat.persona);
   const [greeting, setGreeting] = useState(initial.chat.greeting);
@@ -33,6 +43,10 @@ export function OrgSettingsForm({ orgId, canEdit, initial }: Props) {
     initial.chat.suggestions.join("\n"),
   );
   const [fallbackMessage, setFallbackMessage] = useState(initial.chat.fallbackMessage);
+  const [languagePolicy, setLanguagePolicy] = useState<LanguagePolicy>(
+    initial.chat.languagePolicy,
+  );
+  const [showCitations, setShowCitations] = useState(initial.chat.showCitations);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -60,12 +74,15 @@ export function OrgSettingsForm({ orgId, canEdit, initial }: Props) {
           brandName: brandName.trim() ? brandName : null,
           brandTagline: brandTagline.trim() ? brandTagline : null,
           brandLogoUrl: brandLogoUrl.trim() ? brandLogoUrl : null,
+          brandPrimaryColor: brandPrimaryColor.trim() ? brandPrimaryColor.trim() : null,
           chat: {
             assistantName: assistantName.trim() ? assistantName.trim() : null,
             persona: persona.trim() ? persona : null,
             greeting: greeting.trim() ? greeting : null,
             suggestions,
             fallbackMessage: fallbackMessage.trim() ? fallbackMessage : null,
+            languagePolicy,
+            showCitations,
           },
         }),
       });
@@ -194,6 +211,43 @@ export function OrgSettingsForm({ orgId, canEdit, initial }: Props) {
             className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-teal-400 focus:ring-2 focus:ring-teal-200/60 disabled:bg-slate-50"
           />
         </label>
+
+        <div className="flex flex-col gap-1 text-xs font-medium text-slate-700">
+          <span>Brand primary color</span>
+          <div className="flex items-center gap-3">
+            <input
+              type="color"
+              aria-label="Primary color picker"
+              value={brandPrimaryColor || "#0d9488"}
+              onChange={(e) => setBrandPrimaryColor(e.target.value)}
+              disabled={!canEdit}
+              className="h-10 w-14 cursor-pointer rounded-lg border border-slate-300 bg-white disabled:cursor-not-allowed disabled:opacity-60"
+            />
+            <input
+              type="text"
+              value={brandPrimaryColor}
+              onChange={(e) => setBrandPrimaryColor(e.target.value)}
+              disabled={!canEdit}
+              placeholder="#0d9488"
+              maxLength={7}
+              className="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-sm text-slate-900 focus:border-teal-400 focus:ring-2 focus:ring-teal-200/60 disabled:bg-slate-50"
+            />
+            {brandPrimaryColor ? (
+              <button
+                type="button"
+                onClick={() => setBrandPrimaryColor("")}
+                disabled={!canEdit}
+                className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-medium text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Reset
+              </button>
+            ) : null}
+          </div>
+          <span className="text-[11px] text-slate-500">
+            Used for the chat header, suggestion chips, and send button. Leave
+            empty to keep the default teal theme.
+          </span>
+        </div>
       </div>
 
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
@@ -280,6 +334,46 @@ export function OrgSettingsForm({ orgId, canEdit, initial }: Props) {
           <span className="text-[11px] text-slate-500">
             Used when the assistant has no information to answer from your
             knowledge base.
+          </span>
+        </label>
+
+        <label className="flex flex-col gap-1 text-xs font-medium text-slate-700">
+          Language policy
+          <select
+            value={languagePolicy}
+            onChange={(e) => setLanguagePolicy(e.target.value as LanguagePolicy)}
+            disabled={!canEdit}
+            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-teal-400 focus:ring-2 focus:ring-teal-200/60 disabled:bg-slate-50"
+          >
+            {LANGUAGE_POLICIES.map((p) => (
+              <option key={p} value={p}>
+                {LANGUAGE_POLICY_LABELS[p]}
+              </option>
+            ))}
+          </select>
+          <span className="text-[11px] text-slate-500">
+            Sent to the LLM as a system-prompt instruction so replies match
+            your audience.
+          </span>
+        </label>
+
+        <label className="flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50/60 p-3 text-xs">
+          <input
+            type="checkbox"
+            checked={showCitations}
+            onChange={(e) => setShowCitations(e.target.checked)}
+            disabled={!canEdit}
+            className="mt-0.5 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-300 disabled:cursor-not-allowed disabled:opacity-50"
+          />
+          <span className="flex flex-col gap-0.5">
+            <span className="font-medium text-slate-800">
+              Show citations / sources in answers
+            </span>
+            <span className="text-[11px] text-slate-500">
+              When enabled, the assistant appends a short list of the
+              knowledge-base sources it used. Useful for support agents and
+              compliance reviews.
+            </span>
           </span>
         </label>
       </div>

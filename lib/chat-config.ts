@@ -6,12 +6,22 @@
  * hasn't customized chat yet, so newly-created tenants still get a usable bot.
  */
 
+export const LANGUAGE_POLICIES = [
+  "match-user",
+  "english-only",
+  "original-language",
+] as const;
+
+export type LanguagePolicy = (typeof LANGUAGE_POLICIES)[number];
+
 export type ChatConfig = {
   assistantName: string;
   persona: string;
   greeting: string;
   suggestions: string[];
   fallbackMessage: string;
+  languagePolicy: LanguagePolicy;
+  showCitations: boolean;
 };
 
 export const CHAT_LIMITS = {
@@ -22,6 +32,12 @@ export const CHAT_LIMITS = {
   suggestionLabel: 80,
   fallbackMessage: 500,
 } as const;
+
+export const LANGUAGE_POLICY_LABELS: Record<LanguagePolicy, string> = {
+  "match-user": "Match the visitor's language",
+  "english-only": "Always reply in English",
+  "original-language": "Reply in the knowledge base's language",
+};
 
 const DEFAULT_FALLBACK =
   "I don't have that information in my knowledge base yet. Please contact support for help.";
@@ -47,6 +63,8 @@ export function defaultChatConfig(brandName: string): ChatConfig {
       `What payment methods does ${name} accept?`,
     ],
     fallbackMessage: DEFAULT_FALLBACK,
+    languagePolicy: "match-user",
+    showCitations: false,
   };
 }
 
@@ -68,12 +86,20 @@ export function readChatConfig(
         .slice(0, CHAT_LIMITS.suggestionMax)
     : base.suggestions;
 
+  const languagePolicy: LanguagePolicy =
+    typeof r.languagePolicy === "string" &&
+    (LANGUAGE_POLICIES as readonly string[]).includes(r.languagePolicy)
+      ? (r.languagePolicy as LanguagePolicy)
+      : base.languagePolicy;
+
   return {
     assistantName: str(r.assistantName, base.assistantName),
     persona: typeof r.persona === "string" ? r.persona : "",
     greeting: str(r.greeting, base.greeting),
     suggestions: suggestions.length > 0 ? suggestions : base.suggestions,
     fallbackMessage: str(r.fallbackMessage, base.fallbackMessage),
+    languagePolicy,
+    showCitations: typeof r.showCitations === "boolean" ? r.showCitations : base.showCitations,
   };
 }
 
@@ -175,5 +201,55 @@ export function validateChatPatch(
     else out.fallbackMessage = v.trim();
   }
 
+  if ("languagePolicy" in p) {
+    const v = p.languagePolicy;
+    if (v === null || v === "") out.languagePolicy = null;
+    else if (typeof v !== "string" || !(LANGUAGE_POLICIES as readonly string[]).includes(v)) {
+      return {
+        ok: false,
+        error: `languagePolicy must be one of: ${LANGUAGE_POLICIES.join(", ")}.`,
+      };
+    } else out.languagePolicy = v;
+  }
+
+  if ("showCitations" in p) {
+    const v = p.showCitations;
+    if (typeof v !== "boolean")
+      return { ok: false, error: "showCitations must be a boolean." };
+    out.showCitations = v;
+  }
+
   return { ok: true, patch: out };
+}
+
+/**
+ * Validate a primary color string. Accepts #RGB or #RRGGBB (case-insensitive).
+ * Returns the normalized lowercased hex, or null for clear, or an error.
+ */
+export function validatePrimaryColor(
+  value: unknown,
+): { ok: true; color: string | null } | { ok: false; error: string } {
+  if (value === null || value === undefined || value === "") {
+    return { ok: true, color: null };
+  }
+  if (typeof value !== "string") {
+    return { ok: false, error: "Primary color must be a string." };
+  }
+  const trimmed = value.trim();
+  if (!trimmed) return { ok: true, color: null };
+  const m = trimmed.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+  if (!m) {
+    return {
+      ok: false,
+      error: "Primary color must be a hex value like #0d9488 or #ff0.",
+    };
+  }
+  let hex = m[1].toLowerCase();
+  if (hex.length === 3) {
+    hex = hex
+      .split("")
+      .map((c) => c + c)
+      .join("");
+  }
+  return { ok: true, color: `#${hex}` };
 }

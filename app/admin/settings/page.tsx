@@ -59,6 +59,8 @@ export default async function AdminSettingsPage({
           brandName: (row.settings?.brandName as string | undefined) ?? "",
           brandTagline: (row.settings?.brandTagline as string | undefined) ?? "",
           brandLogoUrl: (row.settings?.brandLogoUrl as string | undefined) ?? "",
+          brandPrimaryColor:
+            (row.settings?.brandPrimaryColor as string | undefined) ?? "",
           chat: readChatConfig(
             row.settings?.chat,
             (row.settings?.brandName as string | undefined) ?? row.name,

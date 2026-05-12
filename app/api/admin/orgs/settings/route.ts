@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { getSql } from "@/lib/db";
 import { requireRole, resolveOrgContext } from "@/lib/rbac";
 import { logAudit } from "@/lib/audit";
-import { readChatConfig, validateChatPatch } from "@/lib/chat-config";
+import { readChatConfig, validateChatPatch, validatePrimaryColor } from "@/lib/chat-config";
 
 type SettingsBody = {
   orgId?: string;
@@ -12,6 +12,7 @@ type SettingsBody = {
   brandName?: string | null;
   brandTagline?: string | null;
   brandLogoUrl?: string | null;
+  brandPrimaryColor?: string | null;
   chat?: unknown;
 };
 
@@ -69,6 +70,8 @@ export async function GET(request: Request) {
         brandName: brandNameStored,
         brandTagline: (row.settings?.brandTagline as string | undefined) ?? null,
         brandLogoUrl: (row.settings?.brandLogoUrl as string | undefined) ?? null,
+        brandPrimaryColor:
+          (row.settings?.brandPrimaryColor as string | undefined) ?? null,
       },
       chat: readChatConfig(row.settings?.chat, brandNameStored ?? row.name),
       role: context.role,
@@ -150,6 +153,11 @@ export async function PATCH(request: Request) {
         brandUpdates.brandLogoUrl = null;
       }
     }
+    if (body.brandPrimaryColor !== undefined) {
+      const result = validatePrimaryColor(body.brandPrimaryColor);
+      if (!result.ok) return jsonError(result.error, 400);
+      brandUpdates.brandPrimaryColor = result.color;
+    }
 
     let chatPatchKeys: string[] = [];
     let mergedChat: Record<string, unknown> | undefined;
@@ -217,6 +225,8 @@ export async function PATCH(request: Request) {
         brandName: brandNameStored,
         brandTagline: (updated.settings?.brandTagline as string | undefined) ?? null,
         brandLogoUrl: (updated.settings?.brandLogoUrl as string | undefined) ?? null,
+        brandPrimaryColor:
+          (updated.settings?.brandPrimaryColor as string | undefined) ?? null,
       },
       chat: readChatConfig(updated.settings?.chat, brandNameStored ?? updated.name),
     });
