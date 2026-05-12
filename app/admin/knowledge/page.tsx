@@ -14,6 +14,15 @@ type IngestJobRow = {
   updatedAt: string;
 };
 
+type KbDocumentRow = {
+  id: string;
+  title: string;
+  sourceUri: string | null;
+  ingestStatus: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export default async function AdminKnowledgePage({
   searchParams,
 }: {
@@ -68,6 +77,20 @@ export default async function AdminKnowledgePage({
     limit 25
   `;
 
+  const documents = await sql<KbDocumentRow[]>`
+    select
+      id,
+      title,
+      source_uri as "sourceUri",
+      ingest_status as "ingestStatus",
+      to_char(created_at at time zone 'utc', 'YYYY-MM-DD HH24:MI') as "createdAt",
+      to_char(updated_at at time zone 'utc', 'YYYY-MM-DD HH24:MI') as "updatedAt"
+    from public.kb_documents
+    where org_id = ${context.orgId}::uuid
+    order by updated_at desc
+    limit 25
+  `;
+
   let canStartIngest = true;
   try {
     await requireRole(context.orgId, "kb:write", user.id);
@@ -81,6 +104,7 @@ export default async function AdminKnowledgePage({
       orgName={context.orgName}
       canStartIngest={canStartIngest}
       jobs={jobs}
+      documents={documents}
     />
   );
 }

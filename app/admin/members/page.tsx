@@ -3,8 +3,12 @@ import { redirect } from "next/navigation";
 import { getSql } from "@/lib/db";
 import { requireRole, resolveOrgContext } from "@/lib/rbac";
 import { InviteMemberForm } from "@/components/admin/InviteMemberForm";
+import { MembersTable } from "@/components/admin/MembersTable";
 
 type MemberRow = {
+  membershipId: string;
+  userId: string;
+  authSubject: string | null;
   email: string;
   displayName: string | null;
   role: string;
@@ -52,6 +56,9 @@ export default async function AdminMembersPage({
 
   const members = await sql<MemberRow[]>`
     select
+      m.id as "membershipId",
+      u.id as "userId",
+      u.auth_subject as "authSubject",
       u.email as "email",
       u.display_name as "displayName",
       m.role::text as "role",
@@ -68,6 +75,8 @@ export default async function AdminMembersPage({
   } catch {
     canInvite = false;
   }
+
+  const canManage = context.role === "org_owner" || context.role === "org_admin";
 
   const pendingInvites = canInvite
     ? await sql<InvitationRow[]>`
@@ -94,43 +103,12 @@ export default async function AdminMembersPage({
 
       {canInvite ? <InviteMemberForm orgId={context.orgId} /> : null}
 
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <table className="min-w-full divide-y divide-slate-200">
-          <thead className="bg-slate-50">
-            <tr>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
-                Email
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
-                Name
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
-                Role
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">
-                Joined (UTC)
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {members.map((member) => (
-              <tr key={`${member.email}-${member.joinedAt}`}>
-                <td className="px-4 py-3 text-sm text-slate-900">{member.email}</td>
-                <td className="px-4 py-3 text-sm text-slate-700">{member.displayName ?? "-"}</td>
-                <td className="px-4 py-3 text-sm text-slate-700">{member.role}</td>
-                <td className="px-4 py-3 text-sm text-slate-700">{member.joinedAt}</td>
-              </tr>
-            ))}
-            {members.length === 0 ? (
-              <tr>
-                <td className="px-4 py-6 text-sm text-slate-600" colSpan={4}>
-                  No members found in this organization yet.
-                </td>
-              </tr>
-            ) : null}
-          </tbody>
-        </table>
-      </div>
+      <MembersTable
+        orgId={context.orgId}
+        currentAuthSubject={user.id}
+        canManage={canManage}
+        members={members}
+      />
 
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
