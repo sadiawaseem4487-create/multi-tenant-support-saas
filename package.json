@@ -6,7 +6,14 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "db:migrate": "node --env-file=.env.local scripts/migrate.mjs apply",
+    "db:migrate:status": "node --env-file=.env.local scripts/migrate.mjs status",
+    "db:migrate:mark": "node --env-file=.env.local scripts/migrate.mjs mark",
+    "db:migrate:rls": "node --env-file=.env.local scripts/migrate.mjs apply --include-optional",
+    "db:backfill-docs-org": "node --env-file=.env.local scripts/backfill-documents-org.mjs",
+    "verify:tenant-isolation": "node --env-file=.env.local scripts/verify-tenant-isolation.mjs",
+    "rotate:secrets": "node scripts/rotate-secrets.mjs"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.3.1",
