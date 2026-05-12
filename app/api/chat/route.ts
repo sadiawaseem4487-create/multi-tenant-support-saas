@@ -1,10 +1,21 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { resolveOrgContext } from "@/lib/rbac";
 import { checkRateLimit, clientIp } from "@/lib/rate-limit";
 import { getSql } from "@/lib/db";
 import { readChatConfig, type ChatConfig } from "@/lib/chat-config";
-import { detectFallback, logChatMessage, type ChatLogSource } from "@/lib/chat-log";
+import {
+  detectFallback,
+  logChatMessage,
+  type ChatLogEntry,
+  type ChatLogSource,
+} from "@/lib/chat-log";
+
+function logAfter(entry: ChatLogEntry) {
+  after(async () => {
+    await logChatMessage(entry);
+  });
+}
 
 type PublicOrgRow = {
   id: string;
@@ -195,7 +206,7 @@ export async function POST(req: NextRequest) {
         errMsg = rawText.slice(0, 500);
       }
       if (logOrgId) {
-        void logChatMessage({
+        logAfter({
           orgId: logOrgId,
           question: logQuestion,
           answer: null,
@@ -215,7 +226,7 @@ export async function POST(req: NextRequest) {
     const answer = extractAnswer(parsed);
     if (!answer) {
       if (logOrgId) {
-        void logChatMessage({
+        logAfter({
           orgId: logOrgId,
           question: logQuestion,
           answer: null,
@@ -240,7 +251,7 @@ export async function POST(req: NextRequest) {
       : false;
 
     if (logOrgId) {
-      void logChatMessage({
+      logAfter({
         orgId: logOrgId,
         question: logQuestion,
         answer,
@@ -258,7 +269,7 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     const elapsedMs = Date.now() - startedAt;
     if (logOrgId && logQuestion) {
-      void logChatMessage({
+      logAfter({
         orgId: logOrgId,
         question: logQuestion,
         responseMs: elapsedMs,
