@@ -3,6 +3,7 @@ import { randomBytes, createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { requireRole, resolveOrgContext, type MembershipRole } from "@/lib/rbac";
 import { getSql } from "@/lib/db";
+import { logAudit } from "@/lib/audit";
 
 const allowedRoles: MembershipRole[] = [
   "org_owner",
@@ -120,6 +121,15 @@ export async function POST(request: Request) {
       )
       returning id, to_char(expires_at at time zone 'utc', 'YYYY-MM-DD HH24:MI') as "expiresAt"
     `;
+
+    await logAudit({
+      orgId: membership.orgId,
+      actorAuthSubject: userId,
+      action: "member.invited",
+      resourceType: "invitation",
+      resourceId: invitation?.id ?? null,
+      metadata: { email, role },
+    });
 
     let emailDelivery:
       | { delivered: true; reason?: never }

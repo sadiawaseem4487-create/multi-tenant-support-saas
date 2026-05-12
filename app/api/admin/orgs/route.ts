@@ -3,6 +3,7 @@ import { randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
 import { getSql } from "@/lib/db";
 import { listMemberships, requireRole, resolveOrgContext } from "@/lib/rbac";
+import { logAudit } from "@/lib/audit";
 
 type CreateOrgPayload = {
   name?: string;
@@ -117,6 +118,15 @@ export async function POST(request: Request) {
       values (${createdOrgId}::uuid, ${appUser.id}::uuid, 'org_owner')
       on conflict (org_id, user_id) do nothing
     `;
+
+    await logAudit({
+      orgId: createdOrgId,
+      actorAuthSubject: userId,
+      action: "org.created",
+      resourceType: "org",
+      resourceId: createdOrgId,
+      metadata: { name, slug: createdSlug },
+    });
 
     const memberships = await listMemberships(userId);
     return NextResponse.json({

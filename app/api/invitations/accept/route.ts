@@ -2,6 +2,7 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { getSql } from "@/lib/db";
+import { logAudit } from "@/lib/audit";
 
 type AcceptPayload = {
   token?: string;
@@ -124,10 +125,20 @@ export async function POST(request: Request) {
       `;
 
       return {
+        invitationId: invite.id,
         orgId: invite.orgId,
         orgName: invite.orgName,
         role: invite.role,
       };
+    });
+
+    await logAudit({
+      orgId: result.orgId,
+      actorAuthSubject: userId,
+      action: "invitation.accepted",
+      resourceType: "invitation",
+      resourceId: result.invitationId,
+      metadata: { role: result.role, email: normalizedEmail },
     });
 
     return NextResponse.json({

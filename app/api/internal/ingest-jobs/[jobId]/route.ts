@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSql } from "@/lib/db";
+import { logAudit } from "@/lib/audit";
 
 type IngestUpdatePayload = {
   status?: "queued" | "running" | "success" | "failed";
@@ -40,7 +41,12 @@ export async function PATCH(
     const error =
       typeof body.error === "string" && body.error.trim() ? body.error.trim().slice(0, 2000) : null;
 
-    const rows = await sql<{ id: string; status: string }[]>`
+    const rows = await sql<{
+      id: string;
+      status: string;
+      orgId: string;
+      kbDocumentId: string | null;
+    }[]>`
       update public.ingest_jobs
       set
         status = ${body.status}::public.ingest_job_status,
@@ -48,11 +54,33 @@ export async function PATCH(
         error = ${error},
         updated_at = now()
       where id = ${jobId}::uuid
-      returning id, status::text as "status"
+      returning
+        id,
+        status::text as "status",
+        org_id as "orgId",
+        (payload->>'kbDocumentId') as "kbDocumentId"
     `;
 
     if (!rows.length) {
       return NextResponse.json({ error: "Ingest job not found." }, { status: 404 });
+    }
+
+    if (body.status === "success" || body.status === "failed") {
+      if (rows[0].kbDocumentId) {
+        const kbStatus = body.status === "success" ? "ready" : "failed";
+        await sql`
+          update public.kb_documents
+          set ingest_status = ${kbStatus}, updated_at = now()
+          where id = ${rows[0].kbDocumentId}::uuid
+        `;
+      }
+      await logAudit({
+        orgId: rows[0].orgId,
+        action: body.status === "success" ? "ingest.completed" : "ingest.failed",
+        resourceType: "ingest_job",
+        resourceId: rows[0].id,
+        metadata: { n8nExecutionId, error, kbDocumentId: rows[0].kbDocumentId },
+      });
     }
 
     return NextResponse.json({ ok: true, jobId: rows[0].id, status: rows[0].status });

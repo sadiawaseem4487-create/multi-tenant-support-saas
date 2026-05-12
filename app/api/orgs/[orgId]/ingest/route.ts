@@ -2,6 +2,7 @@ import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { getSql } from "@/lib/db";
 import { requireRole } from "@/lib/rbac";
+import { logAudit } from "@/lib/audit";
 
 type IngestRequestBody = {
   source?: string;
@@ -94,6 +95,21 @@ export async function POST(
       return NextResponse.json({ error: "DATABASE_URL is not set." }, { status: 500 });
     }
 
+    const title =
+      typeof payload.title === "string" && payload.title.trim()
+        ? payload.title.trim().slice(0, 200)
+        : `Ingest from ${source} (${new Date().toISOString().slice(0, 19).replace("T", " ")})`;
+    const sourceUri =
+      typeof payload.documentUrl === "string" && payload.documentUrl.trim()
+        ? payload.documentUrl.trim().slice(0, 2048)
+        : null;
+
+    const [kbDocument] = await sql<{ id: string }[]>`
+      insert into public.kb_documents (org_id, title, source_uri, ingest_status)
+      values (${orgId}::uuid, ${title}, ${sourceUri}, 'pending')
+      returning id
+    `;
+
     const correlationId = crypto.randomUUID();
     const [job] = await sql<IngestJobRow[]>`
       insert into public.ingest_jobs (org_id, status, source, payload)
@@ -101,7 +117,12 @@ export async function POST(
         ${orgId}::uuid,
         'queued',
         ${source},
-        ${JSON.stringify({ ...payload, requestedBy: userId, correlationId })}::jsonb
+        ${JSON.stringify({
+          ...payload,
+          requestedBy: userId,
+          correlationId,
+          kbDocumentId: kbDocument.id,
+        })}::jsonb
       )
       returning
         id,
@@ -128,6 +149,7 @@ export async function POST(
           body: JSON.stringify({
             job_id: job.id,
             org_id: orgId,
+            kb_document_id: kbDocument.id,
             source,
             payload,
             correlation_id: correlationId,
@@ -176,6 +198,15 @@ export async function POST(
         where id = ${job.id}::uuid
       `;
 
+      await logAudit({
+        orgId,
+        actorAuthSubject: userId,
+        action: "ingest.started",
+        resourceType: "ingest_job",
+        resourceId: job.id,
+        metadata: { source, correlationId, n8nExecutionId: executionId },
+      });
+
       return NextResponse.json({
         jobId: job.id,
         status: "running",
@@ -192,6 +223,19 @@ export async function POST(
         set status = 'failed', error = ${dispatchMessage.slice(0, 1000)}, updated_at = now()
         where id = ${job.id}::uuid
       `;
+      await sql`
+        update public.kb_documents
+        set ingest_status = 'failed', updated_at = now()
+        where id = ${kbDocument.id}::uuid
+      `;
+      await logAudit({
+        orgId,
+        actorAuthSubject: userId,
+        action: "ingest.failed",
+        resourceType: "ingest_job",
+        resourceId: job.id,
+        metadata: { source, correlationId, error: dispatchMessage.slice(0, 500) },
+      });
       return NextResponse.json(
         { error: dispatchMessage, jobId: job.id },
         { status: 502 },

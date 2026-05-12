@@ -1,6 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { resolveOrgContext } from "@/lib/rbac";
+import { checkRateLimit, clientIp } from "@/lib/rate-limit";
+import { getSql } from "@/lib/db";
+
+type PublicOrgRow = {
+  id: string;
+  name: string;
+};
+
+async function resolveBySiteSlug(slug: string): Promise<PublicOrgRow | null> {
+  const sql = getSql();
+  if (!sql) return null;
+  const normalized = slug.toLowerCase().replace(/[^a-z0-9-]/g, "");
+  if (!normalized) return null;
+  const [row] = await sql<PublicOrgRow[]>`
+    select id, name from public.orgs where site_slug = ${normalized} limit 1
+  `;
+  return row ?? null;
+}
 
 type N8nChatResponse = {
   answer?: string;
@@ -16,11 +34,40 @@ function extractAnswer(data: unknown): string | null {
   return null;
 }
 
+const CHAT_RATE_LIMIT = (() => {
+  const fromEnv = parseInt(process.env.CHAT_RATE_LIMIT_PER_MINUTE ?? "", 10);
+  if (Number.isFinite(fromEnv) && fromEnv > 0) return fromEnv;
+  return 30;
+})();
+const CHAT_WINDOW_MS = 60_000;
+
 export async function POST(req: NextRequest) {
   try {
+    const { userId } = await auth();
+    const ip = clientIp(req.headers);
+    const rateKey = userId ? `chat:user:${userId}` : `chat:ip:${ip}`;
+    const rate = checkRateLimit(rateKey, CHAT_RATE_LIMIT, CHAT_WINDOW_MS);
+
+    if (!rate.allowed) {
+      return NextResponse.json(
+        { error: "Too many requests. Please slow down and try again shortly." },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(rate.retryAfterSeconds),
+            "X-RateLimit-Limit": String(rate.limit),
+            "X-RateLimit-Remaining": String(rate.remaining),
+            "X-RateLimit-Reset": String(Math.ceil(rate.resetAt / 1000)),
+          },
+        },
+      );
+    }
+
     const body = await req.json();
     const message = typeof body?.message === "string" ? body.message.trim() : "";
     const requestedOrgId = typeof body?.orgId === "string" ? body.orgId : null;
+    const requestedSiteSlug =
+      typeof body?.siteSlug === "string" && body.siteSlug.trim() ? body.siteSlug.trim() : null;
 
     if (!message) {
       return NextResponse.json({ error: "message is required" }, { status: 400 });
@@ -29,7 +76,6 @@ export async function POST(req: NextRequest) {
     const webhookUrl = process.env.N8N_WEBHOOK_URL;
     const companyName = process.env.COMPANY_NAME ?? "NovaCompany";
     const webhookSecret = process.env.WEBHOOK_SECRET?.trim();
-    const { userId } = await auth();
 
     let orgContext:
       | {
@@ -43,6 +89,11 @@ export async function POST(req: NextRequest) {
         orgContext = { orgId: resolved.orgId, orgName: resolved.orgName };
       } catch {
         orgContext = null;
+      }
+    } else if (requestedSiteSlug) {
+      const publicOrg = await resolveBySiteSlug(requestedSiteSlug);
+      if (publicOrg) {
+        orgContext = { orgId: publicOrg.id, orgName: publicOrg.name };
       }
     }
 
