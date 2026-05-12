@@ -3,10 +3,16 @@ import { auth } from "@clerk/nextjs/server";
 import { resolveOrgContext } from "@/lib/rbac";
 import { checkRateLimit, clientIp } from "@/lib/rate-limit";
 import { getSql } from "@/lib/db";
+import { readChatConfig, type ChatConfig } from "@/lib/chat-config";
 
 type PublicOrgRow = {
   id: string;
   name: string;
+};
+
+type OrgChatRow = {
+  brandName: string | null;
+  settings: Record<string, unknown> | null;
 };
 
 async function resolveBySiteSlug(slug: string): Promise<PublicOrgRow | null> {
@@ -18,6 +24,24 @@ async function resolveBySiteSlug(slug: string): Promise<PublicOrgRow | null> {
     select id, name from public.orgs where site_slug = ${normalized} limit 1
   `;
   return row ?? null;
+}
+
+async function loadChatConfigForOrg(
+  orgId: string,
+  fallbackName: string,
+): Promise<ChatConfig> {
+  const sql = getSql();
+  if (!sql) return readChatConfig(null, fallbackName);
+  const [row] = await sql<OrgChatRow[]>`
+    select (settings->>'brandName') as "brandName", settings
+    from public.orgs
+    where id = ${orgId}::uuid
+    limit 1
+  `;
+  return readChatConfig(
+    row?.settings?.chat ?? null,
+    row?.brandName ?? fallbackName,
+  );
 }
 
 type N8nChatResponse = {
@@ -104,6 +128,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const chatConfig = orgContext
+      ? await loadChatConfigForOrg(orgContext.orgId, orgContext.orgName)
+      : null;
+
     const upstream = await fetch(webhookUrl, {
       method: "POST",
       headers: {
@@ -116,6 +144,15 @@ export async function POST(req: NextRequest) {
         org_id: orgContext?.orgId ?? null,
         org_name: orgContext?.orgName ?? null,
         correlation_id: crypto.randomUUID(),
+        ...(chatConfig
+          ? {
+              chat_config: {
+                assistant_name: chatConfig.assistantName,
+                persona: chatConfig.persona,
+                fallback_message: chatConfig.fallbackMessage,
+              },
+            }
+          : {}),
       }),
       cache: "no-store",
     });

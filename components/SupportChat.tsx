@@ -8,7 +8,13 @@ type ChatMessage = { role: Role; text: string };
 
 type Suggestion = { label: string; prompt: string };
 
-function getWelcomeMessage(name: string): string {
+export type SupportChatConfig = {
+  assistantName: string;
+  greeting: string;
+  suggestions: string[];
+};
+
+function defaultGreeting(name: string): string {
   return [
     `Hello, and welcome to ${name} support.`,
     "",
@@ -18,7 +24,7 @@ function getWelcomeMessage(name: string): string {
   ].join("\n");
 }
 
-function getSuggestedQuestions(name: string): Suggestion[] {
+function defaultSuggestions(name: string): Suggestion[] {
   return [
     { label: `What is ${name}?`, prompt: `What is ${name}?` },
     {
@@ -44,6 +50,11 @@ function getSuggestedQuestions(name: string): Suggestion[] {
   ];
 }
 
+function shortLabel(text: string, max = 24): string {
+  const t = text.trim();
+  return t.length <= max ? t : t.slice(0, max - 1).trimEnd() + "…";
+}
+
 type Props = {
   brandName: string;
   brandTagline: string;
@@ -51,6 +62,8 @@ type Props = {
   variant?: "default" | "floating";
   /** Public site slug; sent to /api/chat to resolve org_id for anonymous visitors. */
   siteSlug?: string;
+  /** Per-org chat behavior (assistant name, greeting, suggestions). */
+  chatConfig?: SupportChatConfig;
 };
 
 export function SupportChat({
@@ -58,17 +71,26 @@ export function SupportChat({
   brandTagline,
   variant = "default",
   siteSlug,
+  chatConfig,
 }: Props) {
   const floating = variant === "floating";
 
+  const assistantName = chatConfig?.assistantName?.trim() || brandName;
+  const greetingText =
+    chatConfig?.greeting?.trim() || defaultGreeting(assistantName);
+  const suggestions: Suggestion[] = chatConfig?.suggestions?.length
+    ? chatConfig.suggestions.map((q) => ({
+        label: shortLabel(q),
+        prompt: q,
+      }))
+    : defaultSuggestions(assistantName);
+
   const [messages, setMessages] = useState<ChatMessage[]>([
-    { role: "bot", text: getWelcomeMessage(brandName) },
+    { role: "bot", text: greetingText },
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
-
-  const suggestions = getSuggestedQuestions(brandName);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -141,11 +163,11 @@ export function SupportChat({
               className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500 to-sky-600 text-base font-bold text-white shadow-md ring-2 ring-white/30"
               aria-hidden
             >
-              {brandName.charAt(0).toUpperCase()}
+              {assistantName.charAt(0).toUpperCase()}
             </div>
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-base font-semibold text-slate-900">{brandName}</h2>
+                <h2 className="text-base font-semibold text-slate-900">{assistantName}</h2>
                 <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-800 ring-1 ring-emerald-200/80">
                   <span className="h-1 w-1 rounded-full bg-emerald-500" aria-hidden />
                   Online
@@ -177,7 +199,7 @@ export function SupportChat({
                     AI
                   </span>
                   <span className="text-[10px] font-semibold text-slate-500 sm:text-xs">
-                    {brandName}
+                    {assistantName}
                   </span>
                 </div>
               )}

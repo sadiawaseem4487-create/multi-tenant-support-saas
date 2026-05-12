@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getSql } from "@/lib/db";
 import { PublicSiteChat } from "@/components/PublicSiteChat";
+import { readChatConfig } from "@/lib/chat-config";
 
 type OrgRow = {
   id: string;
@@ -11,6 +12,7 @@ type OrgRow = {
   brandName: string | null;
   brandTagline: string | null;
   brandLogoUrl: string | null;
+  settings: Record<string, unknown> | null;
 };
 
 async function loadOrgBySlug(slug: string): Promise<OrgRow | null> {
@@ -25,7 +27,8 @@ async function loadOrgBySlug(slug: string): Promise<OrgRow | null> {
       site_slug as "siteSlug",
       (settings->>'brandName') as "brandName",
       (settings->>'brandTagline') as "brandTagline",
-      (settings->>'brandLogoUrl') as "brandLogoUrl"
+      (settings->>'brandLogoUrl') as "brandLogoUrl",
+      settings
     from public.orgs
     where site_slug = ${normalized}
     limit 1
@@ -62,6 +65,7 @@ export default async function PublicOrgSite({
   const brandName = org.brandName ?? org.name;
   const tagline = org.brandTagline ?? "Customer support assistant";
   const initial = brandName.charAt(0).toUpperCase();
+  const chatConfig = readChatConfig(org.settings?.chat, brandName);
 
   return (
     <div className="chat-page-bg min-h-screen">
@@ -102,6 +106,11 @@ export default async function PublicOrgSite({
               siteSlug={org.siteSlug}
               brandName={brandName}
               brandTagline={tagline}
+              chatConfig={{
+                assistantName: chatConfig.assistantName,
+                greeting: chatConfig.greeting,
+                suggestions: chatConfig.suggestions,
+              }}
             />
           </div>
         </section>
