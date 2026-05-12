@@ -1,107 +1,130 @@
-# Embed widget snippet
+# Embed widget
 
-**Sprint 3 · S3-4**
+Once an organization has set a **site slug** under `/admin/settings`, three
+integration points become available:
 
-Once an organization has set a **site slug** under `/admin/settings`, two integration
-points become available:
+1. **Hosted branded page** — `https://your-app.example.com/site/<slug>`
+2. **Embed iframe content** — `https://your-app.example.com/embed/<slug>`
+   (renders only the chat panel; chrome-free; designed to be iframed)
+3. **One-line embed script** — drop a single `<script>` tag and the widget
+   takes care of itself
 
-1. A hosted, branded support page at `https://your-app.example.com/site/<slug>`.
-2. A standalone iframe embed you can drop into any HTML page.
+The script-based embed is the recommended integration; it ships only ~5KB of
+bootstrap JS and renders the chat inside an iframe served from this app, so
+tenant-aware logic (RAG, RBAC, branding, persona) all runs server-side.
 
-There is no separate JavaScript bundle yet — the embed is a small HTML snippet that
-loads the hosted page in an iframe with brand-safe styling. This keeps the host page
-isolated from our CSS/JS and avoids cross-origin script execution.
+## One-line embed script
+
+In `/admin/settings` → **Embed on your website** card → click **Copy**.
+You'll get a snippet like:
+
+```html
+<script
+  src="https://your-app.example.com/embed.js"
+  data-site-slug="acme-support"
+  async
+></script>
+```
+
+Paste it inside the customer website's `<body>` (anywhere — the loader
+appends its own DOM at the end of `body` on load).
+
+### Attributes
+
+| Attribute | Required | Default | Notes |
+|---|---|---|---|
+| `data-site-slug` | yes | — | The org's site slug. Must match a row in `public.orgs.site_slug`. |
+| `data-position` | no | `bottom-right` | Also accepts `bottom-left`. |
+| `data-primary-color` | no | (org's `brandPrimaryColor` from admin) | Hex string like `#7c3aed`. Overrides the org-level color only inside the embedded panel; useful when a customer wants the widget to match their own site's accent. |
+| `data-z-index` | no | `2147483646` | Integer. Bump if the host site has a higher-z element covering the bubble. |
+| `async` | recommended | — | Standard HTML attribute. The loader does not block rendering. |
+
+### Behaviour
+
+- The bubble renders immediately. The chat iframe is **not** loaded until the
+  visitor clicks the bubble (deferred load → no extra bytes for visitors who
+  never open it).
+- Pressing `Esc` closes the panel.
+- Mobile: panel resizes to fill the screen minus margins.
+- Anonymous: the iframe doesn't share auth with the host page; chat is
+  tenant-scoped via `site_slug` resolution in `/api/chat`.
+
+## Direct iframe (no JS)
+
+If you can't or don't want to add a script tag, embed the page directly:
+
+```html
+<iframe
+  src="https://your-app.example.com/embed/<slug>"
+  title="Support chat"
+  style="border:0;width:380px;height:560px;border-radius:18px;box-shadow:0 24px 64px rgba(15,23,42,.28);"
+  loading="lazy"
+></iframe>
+```
+
+You lose the floating bubble UX but gain a static integration that works in
+any rich-text editor (e.g. CMS HTML blocks).
 
 ## Hosted page
 
-Anyone can visit this URL — no sign-in required. The page renders the org's brand
-name, tagline, logo (if configured), and a chat that talks to the org's knowledge base.
+Public, no sign-in:
 
 ```
 https://your-app.example.com/site/<slug>
 ```
 
-## Iframe embed
+Shows the org's `brandName`, `brandTagline`, `brandLogoUrl`, and renders a
+full-width branded chat. Use this for landing pages, knowledge-base footers,
+or when you want a permalink for customers to share with their own users.
 
-Paste this near the end of `<body>` on the customer's website. Replace `your-app.example.com`
-with this app's public hostname and `<slug>` with the org's site slug.
+## How the pieces fit
 
-```html
-<!-- multi-tenant-support-saas: floating support widget -->
-<style>
-  .mtss-widget-trigger {
-    position: fixed;
-    right: 24px;
-    bottom: 24px;
-    z-index: 2147483646;
-    width: 56px;
-    height: 56px;
-    border-radius: 9999px;
-    border: 0;
-    background: linear-gradient(135deg, #14b8a6, #0891b2);
-    color: #fff;
-    font-size: 24px;
-    line-height: 1;
-    cursor: pointer;
-    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.25);
-  }
-  .mtss-widget-frame {
-    position: fixed;
-    right: 24px;
-    bottom: 96px;
-    z-index: 2147483647;
-    width: min(380px, calc(100vw - 32px));
-    height: min(620px, calc(100vh - 120px));
-    border: 0;
-    border-radius: 18px;
-    box-shadow: 0 30px 60px rgba(15, 23, 42, 0.3);
-    background: #ffffff;
-    display: none;
-  }
-  .mtss-widget-frame.is-open { display: block; }
-</style>
-<button type="button" class="mtss-widget-trigger" aria-label="Open support chat"
-        onclick="document.getElementById('mtss-widget').classList.toggle('is-open')">?</button>
-<iframe id="mtss-widget" class="mtss-widget-frame"
-        title="Support chat"
-        loading="lazy"
-        referrerpolicy="no-referrer-when-downgrade"
-        src="https://your-app.example.com/site/<slug>"></iframe>
+```
+customer-site.com
+   └─ <script src=".../embed.js" data-site-slug="acme-support">
+        ├─ injects: <button class="mts-chat-bubble">  (bottom-right)
+        └─ injects: <iframe src="our-app.com/embed/acme-support">
+                       └─ renders: <SupportChat siteSlug="acme-support" ... />
+                            ├─ POST /api/chat  { message, siteSlug }
+                            │     → resolves org_id from site_slug
+                            │     → forwards to n8n with chat_config
+                            │     → calls match_documents(tenant_org_id=org_id)
+                            └─ renders org's branding + persona + greeting
 ```
 
-That's the whole integration. The host page only needs to add a button + an iframe —
-no scripts, no SDK, no cross-origin auth. The chat runs entirely on this app's
-domain and uses the org's `site_slug` to look up the right knowledge base on the
-server.
+All cross-tenant boundaries (RAG retrieval, branding, persona) are enforced
+server-side. The host site only ships the loader script.
 
-## Behaviour
+## Security headers
 
-- **Anonymous users only.** The iframe doesn't share auth state with the host site.
-- **Org resolution.** `/api/chat` reads `siteSlug` from the request body and looks up
-  `public.orgs.site_slug → id`. The chat workflow is called with that `org_id`.
-- **Rate limiting.** The chat is throttled per visitor IP by `CHAT_RATE_LIMIT_PER_MINUTE`
-  (default 30/minute). Signed-in admins get their own per-user bucket.
-- **Tenant isolation.** Retrieval calls `match_documents` with `tenant_org_id = <org>`,
-  which fails closed if missing. Visitors of Org A cannot retrieve Org B's chunks.
-- **Branding.** The page renders the org's `brandName`, `brandTagline`, and `brandLogoUrl`
-  if set (from `/admin/settings`); otherwise it falls back to the org's name + a
-  default tagline.
+- `/embed/<slug>` is served with `Content-Security-Policy: frame-ancestors *`
+  + `X-Frame-Options: ALLOWALL` so customer sites can iframe it.
+- `/embed.js` is served with `Cache-Control: public, max-age=300` (5 min) and
+  `Access-Control-Allow-Origin: *` so any origin can load it.
+- The chat API itself runs same-origin (called from inside the iframe) so no
+  CORS is needed for `/api/chat`.
 
 ## Operator checklist
 
-Before pointing a customer at `/site/<slug>`:
+Before pointing a customer at the embed:
 
-- [ ] Org has at least one successful ingest job (else chat will say "no information yet").
+- [ ] Org has at least one successful ingest job (else chat will say "no
+      information yet").
 - [ ] `documents.org_id` rows for that org exist in Supabase.
-- [ ] `match_documents` RPC has the tenant-aware signature applied.
+- [ ] `match_documents` RPC has the tenant-aware signature applied
+      (migration `0003_match_documents_tenant.sql`).
 - [ ] Public deploy URL is HTTPS.
-- [ ] `CHAT_RATE_LIMIT_PER_MINUTE` is set to a sane value for the expected traffic.
+- [ ] `CHAT_RATE_LIMIT_PER_MINUTE` is set to a sane value for the expected
+      traffic.
 
 ## Future hardening (parking lot)
 
-- **Allowed-origin allowlist.** Today the iframe can be embedded anywhere. To restrict
-  to a customer's domain, add an `Allowed-Origins` setting per org and a CSP header.
-- **Per-site signed embed token.** Replace `site_slug` in the body with a short-lived
-  HMAC token issued from `/admin/settings`, so the slug isn't a public secret.
-- **Standalone JS bundle.** A `<script>` snippet that mounts the iframe and posts
-  events back to the host page (e.g. "session opened", "ticket created").
+- **Allowed-origin allowlist.** Today the loader can be installed on any
+  domain. To restrict to a customer's domain, add an `allowedOrigins`
+  setting per org and validate the `Referer` / `Origin` server-side.
+- **Per-site signed embed token.** Replace `site_slug` in the body with a
+  short-lived HMAC token issued from `/admin/settings`, so the slug isn't a
+  public secret.
+- **PostMessage events.** Have the iframe `postMessage` lifecycle events
+  ("session opened", "human handoff requested") back to the host page so
+  customers can hook them into analytics.

@@ -1,8 +1,10 @@
+import { headers } from "next/headers";
 import { currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { getSql } from "@/lib/db";
 import { resolveOrgContext } from "@/lib/rbac";
 import { OrgSettingsForm } from "@/components/admin/OrgSettingsForm";
+import { EmbedSnippetCard } from "@/components/admin/EmbedSnippetCard";
 import { readChatConfig } from "@/lib/chat-config";
 
 type SettingsRow = {
@@ -38,6 +40,14 @@ export default async function AdminSettingsPage({
   `;
   if (!row) throw new Error("Organization not found.");
 
+  const hdrs = await headers();
+  const host = hdrs.get("x-forwarded-host") ?? hdrs.get("host") ?? "localhost:3000";
+  const proto = hdrs.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
+  const appOrigin = `${proto}://${host}`;
+
+  const primaryColor =
+    (row.settings?.brandPrimaryColor as string | undefined) ?? null;
+
   return (
     <section className="space-y-6">
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -59,13 +69,18 @@ export default async function AdminSettingsPage({
           brandName: (row.settings?.brandName as string | undefined) ?? "",
           brandTagline: (row.settings?.brandTagline as string | undefined) ?? "",
           brandLogoUrl: (row.settings?.brandLogoUrl as string | undefined) ?? "",
-          brandPrimaryColor:
-            (row.settings?.brandPrimaryColor as string | undefined) ?? "",
+          brandPrimaryColor: primaryColor ?? "",
           chat: readChatConfig(
             row.settings?.chat,
             (row.settings?.brandName as string | undefined) ?? row.name,
           ),
         }}
+      />
+
+      <EmbedSnippetCard
+        siteSlug={row.siteSlug}
+        appOrigin={appOrigin}
+        primaryColor={primaryColor}
       />
     </section>
   );
