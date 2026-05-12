@@ -4,6 +4,7 @@ import { resolveOrgContext } from "@/lib/rbac";
 import { checkRateLimit, clientIp } from "@/lib/rate-limit";
 import { getSql } from "@/lib/db";
 import { readChatConfig, type ChatConfig } from "@/lib/chat-config";
+import { detectFallback, logChatMessage, type ChatLogSource } from "@/lib/chat-log";
 
 type PublicOrgRow = {
   id: string;
@@ -66,9 +67,17 @@ const CHAT_RATE_LIMIT = (() => {
 const CHAT_WINDOW_MS = 60_000;
 
 export async function POST(req: NextRequest) {
+  const startedAt = Date.now();
+  const ip = clientIp(req.headers);
+  let logQuestion = "";
+  let logOrgId: string | null = null;
+  let logSource: ChatLogSource = "authenticated";
+  let logUserSubject: string | null = null;
+  const correlationId = crypto.randomUUID();
+
   try {
     const { userId } = await auth();
-    const ip = clientIp(req.headers);
+    logUserSubject = userId ?? null;
     const rateKey = userId ? `chat:user:${userId}` : `chat:ip:${ip}`;
     const rate = checkRateLimit(rateKey, CHAT_RATE_LIMIT, CHAT_WINDOW_MS);
 
@@ -92,6 +101,7 @@ export async function POST(req: NextRequest) {
     const requestedOrgId = typeof body?.orgId === "string" ? body.orgId : null;
     const requestedSiteSlug =
       typeof body?.siteSlug === "string" && body.siteSlug.trim() ? body.siteSlug.trim() : null;
+    logQuestion = message;
 
     if (!message) {
       return NextResponse.json({ error: "message is required" }, { status: 400 });
@@ -111,6 +121,7 @@ export async function POST(req: NextRequest) {
       try {
         const resolved = await resolveOrgContext(userId, requestedOrgId);
         orgContext = { orgId: resolved.orgId, orgName: resolved.orgName };
+        logSource = "authenticated";
       } catch {
         orgContext = null;
       }
@@ -118,8 +129,10 @@ export async function POST(req: NextRequest) {
       const publicOrg = await resolveBySiteSlug(requestedSiteSlug);
       if (publicOrg) {
         orgContext = { orgId: publicOrg.id, orgName: publicOrg.name };
+        logSource = "site_slug";
       }
     }
+    logOrgId = orgContext?.orgId ?? null;
 
     if (!webhookUrl) {
       return NextResponse.json(
@@ -143,7 +156,7 @@ export async function POST(req: NextRequest) {
         company_name: companyName,
         org_id: orgContext?.orgId ?? null,
         org_name: orgContext?.orgName ?? null,
-        correlation_id: crypto.randomUUID(),
+        correlation_id: correlationId,
         ...(chatConfig
           ? {
               chat_config: {
@@ -167,6 +180,8 @@ export async function POST(req: NextRequest) {
       parsed = null;
     }
 
+    const elapsedMs = Date.now() - startedAt;
+
     if (!upstream.ok) {
       let errMsg = `Webhook failed (${upstream.status})`;
       if (
@@ -179,19 +194,82 @@ export async function POST(req: NextRequest) {
       } else if (rawText) {
         errMsg = rawText.slice(0, 500);
       }
+      if (logOrgId) {
+        void logChatMessage({
+          orgId: logOrgId,
+          question: logQuestion,
+          answer: null,
+          wasFallback: false,
+          responseMs: elapsedMs,
+          status: "error",
+          source: logSource,
+          correlationId,
+          visitorIp: ip,
+          userAuthSubject: logUserSubject,
+          errorMessage: errMsg,
+        });
+      }
       return NextResponse.json({ error: errMsg }, { status: upstream.status });
     }
 
     const answer = extractAnswer(parsed);
     if (!answer) {
+      if (logOrgId) {
+        void logChatMessage({
+          orgId: logOrgId,
+          question: logQuestion,
+          answer: null,
+          wasFallback: false,
+          responseMs: elapsedMs,
+          status: "error",
+          source: logSource,
+          correlationId,
+          visitorIp: ip,
+          userAuthSubject: logUserSubject,
+          errorMessage: "No answer field in webhook response",
+        });
+      }
       return NextResponse.json(
         { error: "No answer field in webhook response", raw: parsed ?? rawText },
         { status: 502 }
       );
     }
 
+    const wasFallback = chatConfig
+      ? detectFallback(answer, chatConfig.fallbackMessage)
+      : false;
+
+    if (logOrgId) {
+      void logChatMessage({
+        orgId: logOrgId,
+        question: logQuestion,
+        answer,
+        wasFallback,
+        responseMs: elapsedMs,
+        status: "ok",
+        source: logSource,
+        correlationId,
+        visitorIp: ip,
+        userAuthSubject: logUserSubject,
+      });
+    }
+
     return NextResponse.json({ answer });
-  } catch {
+  } catch (err) {
+    const elapsedMs = Date.now() - startedAt;
+    if (logOrgId && logQuestion) {
+      void logChatMessage({
+        orgId: logOrgId,
+        question: logQuestion,
+        responseMs: elapsedMs,
+        status: "error",
+        source: logSource,
+        correlationId,
+        visitorIp: ip,
+        userAuthSubject: logUserSubject,
+        errorMessage: err instanceof Error ? err.message : "Server error",
+      });
+    }
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
