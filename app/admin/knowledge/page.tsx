@@ -1,6 +1,7 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { IngestJobsPanel } from "@/components/admin/IngestJobsPanel";
+import { KbFilesPanel, type KbFile } from "@/components/admin/KbFilesPanel";
 import { getSql } from "@/lib/db";
 import { requireRole, resolveOrgContext } from "@/lib/rbac";
 
@@ -98,13 +99,52 @@ export default async function AdminKnowledgePage({
     canStartIngest = false;
   }
 
+  const fileRows = await sql<
+    {
+      filename: string;
+      source: string | null;
+      chunkCount: string | number;
+      firstUploadedAt: string | null;
+      lastUploadedAt: string | null;
+    }[]
+  >`
+    select
+      coalesce(metadata->>'filename', '(no filename)') as filename,
+      metadata->>'source' as source,
+      count(*)::int as "chunkCount",
+      min(metadata->>'uploaded_at') as "firstUploadedAt",
+      max(metadata->>'uploaded_at') as "lastUploadedAt"
+    from public.documents
+    where org_id = ${context.orgId}::uuid
+    group by 1, 2
+    order by "lastUploadedAt" desc nulls last, "chunkCount" desc
+  `;
+  const files: KbFile[] = fileRows.map((r) => ({
+    filename: r.filename,
+    source: r.source,
+    chunkCount: Number(r.chunkCount),
+    firstUploadedAt: r.firstUploadedAt,
+    lastUploadedAt: r.lastUploadedAt,
+  }));
+  const totalChunks = files.reduce((acc, f) => acc + f.chunkCount, 0);
+  const uniqueFiles = files.length;
+
   return (
-    <IngestJobsPanel
-      orgId={context.orgId}
-      orgName={context.orgName}
-      canStartIngest={canStartIngest}
-      jobs={jobs}
-      documents={documents}
-    />
+    <section className="space-y-6">
+      <KbFilesPanel
+        orgId={context.orgId}
+        canDelete={canStartIngest}
+        totalChunks={totalChunks}
+        uniqueFiles={uniqueFiles}
+        files={files}
+      />
+      <IngestJobsPanel
+        orgId={context.orgId}
+        orgName={context.orgName}
+        canStartIngest={canStartIngest}
+        jobs={jobs}
+        documents={documents}
+      />
+    </section>
   );
 }

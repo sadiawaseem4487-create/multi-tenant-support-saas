@@ -10,7 +10,8 @@ export type AuditAction =
   | "invitation.revoked"
   | "ingest.started"
   | "ingest.completed"
-  | "ingest.failed";
+  | "ingest.failed"
+  | "kb_file.deleted";
 
 type LogParams = {
   orgId: string | null;
