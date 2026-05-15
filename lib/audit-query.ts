@@ -40,6 +40,97 @@ export type AuditLogQuery = {
 const DEFAULT_PAGE_SIZE = 25;
 const MAX_PAGE_SIZE = 100;
 const MAX_DAYS = 365;
+const MAX_EXPORT_ROWS = 5000;
+
+export async function loadAuditLogForExport(
+  sql: Sql,
+  orgId: string,
+  query: Pick<AuditLogQuery, "days" | "action"> = {},
+): Promise<AuditLogRow[]> {
+  const days =
+    Number.isFinite(query.days) && (query.days as number) > 0
+      ? Math.min(query.days as number, MAX_DAYS)
+      : 30;
+
+  const action = query.action && query.action.trim() ? query.action.trim() : null;
+
+  const rows = await sql<
+    {
+      id: string;
+      createdAt: Date;
+      action: string;
+      resourceType: string;
+      resourceId: string | null;
+      metadata: Record<string, unknown> | null;
+      actorUserId: string | null;
+      actorEmail: string | null;
+    }[]
+  >`
+    select
+      al.id,
+      al.created_at         as "createdAt",
+      al.action,
+      al.resource_type      as "resourceType",
+      al.resource_id        as "resourceId",
+      al.metadata,
+      al.actor_user_id      as "actorUserId",
+      u.email               as "actorEmail"
+    from public.audit_logs al
+    left join public.users u on u.id = al.actor_user_id
+    where al.org_id = ${orgId}::uuid
+      and al.created_at >= now() - (${days}::int * interval '1 day')
+      ${action ? sql`and al.action = ${action}` : sql``}
+    order by al.created_at desc
+    limit ${MAX_EXPORT_ROWS}
+  `;
+
+  return rows.map((r) => ({
+    id: r.id,
+    createdAt: r.createdAt.toISOString(),
+    action: r.action,
+    resourceType: r.resourceType,
+    resourceId: r.resourceId,
+    metadata: r.metadata ?? {},
+    actorUserId: r.actorUserId,
+    actorEmail: r.actorEmail,
+  }));
+}
+
+export function auditRowsToCsv(rows: AuditLogRow[]): string {
+  const header = [
+    "created_at",
+    "action",
+    "actor_email",
+    "resource_type",
+    "resource_id",
+    "metadata",
+  ];
+
+  const escape = (value: string) => {
+    if (/[",\n\r]/.test(value)) {
+      return `"${value.replace(/"/g, '""')}"`;
+    }
+    return value;
+  };
+
+  const lines = [
+    header.join(","),
+    ...rows.map((r) =>
+      [
+        r.createdAt,
+        r.action,
+        r.actorEmail ?? "",
+        r.resourceType,
+        r.resourceId ?? "",
+        JSON.stringify(r.metadata),
+      ]
+        .map((cell) => escape(String(cell)))
+        .join(","),
+    ),
+  ];
+
+  return lines.join("\n");
+}
 
 export async function loadAuditLog(
   sql: Sql,

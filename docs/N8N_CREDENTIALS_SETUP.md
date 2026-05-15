@@ -70,21 +70,22 @@ For each node: **Create Embedding**, **Create Embedding1**, **Generate Answer**:
 
 Use the **same** hex string as Vercel `WEBHOOK_SECRET`.
 
-### C1. n8n Variable (preferred)
+### C1. Free / Starter plan (no Variables tab)
 
-1. n8n → **Variables** → **Add variable**.
-2. Key: `WEBHOOK_SECRET`
-3. Value: paste Vercel `WEBHOOK_SECRET` (e.g. `94ae4e97...`).
-4. **Save**.
+n8n **Variables** require **Pro**. Paste the secret directly in **two** nodes:
 
-### C2. Update nodes
+| Node | Field | Value |
+|------|--------|--------|
+| **IF Secret Valid?** | Condition **right** value | Full Vercel `WEBHOOK_SECRET` hex (plain text, no `={{ }}`) |
+| **Set Ingest Context** | `webhookSecret` | Same hex |
 
-| Node | Field | New value |
-|------|--------|-----------|
-| **IF Secret Valid?** | Condition right value | `={{ $vars.WEBHOOK_SECRET }}` |
-| **Set Ingest Context** | `webhookSecret` | `={{ $vars.WEBHOOK_SECRET }}` |
+When you rotate the secret later, update **both** nodes **and** Vercel, then redeploy.
 
-If Variables are not on your plan, paste the same plain hex in both places (no expression).
+### C2. Pro plan (optional — single source of truth)
+
+1. n8n → **Variables** → **Add variable** → Key: `WEBHOOK_SECRET` → paste Vercel value.
+2. **IF Secret Valid?** right value: `={{ $vars.WEBHOOK_SECRET }}`
+3. **Set Ingest Context** `webhookSecret`: `={{ $vars.WEBHOOK_SECRET }}`
 
 ### C3. Vercel
 
@@ -107,6 +108,6 @@ Vercel → Project → **Environment Variables** → `WEBHOOK_SECRET` must match
 |--------|------------------|
 | OpenRouter | [openrouter.ai/keys](https://openrouter.ai/keys) — revoke old, update credential |
 | Supabase service role | Supabase → Settings → API → reset service role → update credential |
-| Webhook secret | `openssl rand -hex 32` → update Variable + Vercel + redeploy |
+| Webhook secret | `openssl rand -hex 32` → update both n8n nodes + Vercel (+ Variable if Pro) → redeploy |
 
 See also: [WEBHOOK_SECURITY_ROTATION.md](./WEBHOOK_SECURITY_ROTATION.md).

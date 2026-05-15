@@ -132,23 +132,31 @@ export default async function AdminAuditPage({
               ingest runs. All entries are scoped to this organization.
             </p>
           </div>
-          <div className="flex flex-wrap gap-1.5">
-            {WINDOWS.map((w) => {
-              const isActive = w.days === days;
-              return (
-                <Link
-                  key={w.days}
-                  href={baseQuery({ days: w.days, page: null })}
-                  className={`rounded-full px-3 py-1 text-xs font-medium transition ${
-                    isActive
-                      ? "bg-teal-600 text-white shadow-sm"
-                      : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                  }`}
-                >
-                  {w.label}
-                </Link>
-              );
-            })}
+          <div className="flex flex-col items-end gap-2">
+            <a
+              href={`/api/admin/audit/export?orgId=${encodeURIComponent(context.orgId)}&days=${days}${action ? `&action=${encodeURIComponent(action)}` : ""}`}
+              className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+            >
+              Export CSV
+            </a>
+            <div className="flex flex-wrap justify-end gap-1.5">
+              {WINDOWS.map((w) => {
+                const isActive = w.days === days;
+                return (
+                  <Link
+                    key={w.days}
+                    href={baseQuery({ days: w.days, page: null })}
+                    className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+                      isActive
+                        ? "bg-teal-600 text-white shadow-sm"
+                        : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                    }`}
+                  >
+                    {w.label}
+                  </Link>
+                );
+              })}
+            </div>
           </div>
         </div>
 
