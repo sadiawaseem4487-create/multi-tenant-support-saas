@@ -101,6 +101,12 @@ export function OrgSwitcher() {
         Analytics
       </Link>
       <Link
+        href={`/admin/audit?orgId=${encodeURIComponent(data.selectedOrgId)}`}
+        className="text-sm font-medium text-teal-800 underline-offset-4 hover:underline"
+      >
+        Audit
+      </Link>
+      <Link
         href={`/admin/settings?orgId=${encodeURIComponent(data.selectedOrgId)}`}
         className="text-sm font-medium text-teal-800 underline-offset-4 hover:underline"
       >

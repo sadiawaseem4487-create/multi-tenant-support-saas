@@ -2,7 +2,9 @@ import { currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { IngestJobsPanel } from "@/components/admin/IngestJobsPanel";
 import { KbFilesPanel, type KbFile } from "@/components/admin/KbFilesPanel";
+import { KbStatusCard } from "@/components/admin/KbStatusCard";
 import { getSql } from "@/lib/db";
+import { loadKbStatus } from "@/lib/kb-status";
 import { requireRole, resolveOrgContext } from "@/lib/rbac";
 
 type IngestJobRow = {
@@ -129,8 +131,11 @@ export default async function AdminKnowledgePage({
   const totalChunks = files.reduce((acc, f) => acc + f.chunkCount, 0);
   const uniqueFiles = files.length;
 
+  const kbStatus = await loadKbStatus(sql, context.orgId);
+
   return (
     <section className="space-y-6">
+      <KbStatusCard orgName={context.orgName} status={kbStatus} />
       <KbFilesPanel
         orgId={context.orgId}
         canDelete={canStartIngest}
