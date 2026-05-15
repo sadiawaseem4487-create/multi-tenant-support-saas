@@ -175,6 +175,10 @@ SQL migrations live in `db/migrations/` (synced from `~/company costumer service
 - `STAGING_DEPLOY_CHECKLIST.md` — staging runbook.
 - `RBAC_MANUAL_TEST_MATRIX.md` — role × permission verification matrix.
 - `WEBHOOK_SECURITY_ROTATION.md` — webhook secret rotation runbook.
+- `N8N_CREDENTIALS_SETUP.md` — move OpenRouter/Supabase/webhook secret into n8n credentials.
+- `N8N_INGEST_RETRY.md` — ingest failure handling and retry runbook.
+- `SENTRY_SETUP.md` — optional Sentry DSN setup.
+- `RLS_OPTIONAL.md` — optional Row-Level Security migration.
 - `CLERK_BRANDING_CHECKLIST.md` — Clerk dashboard branding steps.
 - `SPRINT2_VERIFICATION.md` — Sprint 2 exit-criteria checklist (tenant isolation).
 
@@ -184,11 +188,11 @@ SQL migrations live in `db/migrations/` (synced from `~/company costumer service
 |--------|------|--------|
 | 0 | Foundations | Done |
 | 1 | Multi-tenant auth, RBAC, invites | Done |
-| 2 | Per-tenant KB, ingest jobs, n8n contracts | Drafts ready; pending staging apply + verification |
-| 3 | Public branded sites per org | Not started |
-| 4 | Observability & reliability | Not started |
+| 2 | Per-tenant KB, ingest jobs, n8n contracts | Done (live) |
+| 3 | Public branded sites, embed, analytics | Done |
+| 4 | Observability & reliability | In progress (Sentry optional; KB status dashboard shipped) |
 | 5 | Stripe billing | Not started |
-| 6 | Enterprise (SSO, audit export) | Not started |
+| 6 | Enterprise (SSO, audit export) | Partial (`/admin/audit` viewer) |
 
 Source of truth: `../company costumer service/docs/SPRINT_BACKLOG.md`.
 
