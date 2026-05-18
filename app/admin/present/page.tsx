@@ -108,13 +108,18 @@ export default async function AdminPresentPage({
       hrefLabel: "Knowledge base",
     },
     {
-      title: "5. Analytics & audit",
+      title: "5. How n8n powers the AI (say this clearly)",
+      say:
+        "Next.js never calls OpenRouter directly. Chat hits N8N_WEBHOOK_URL: n8n embeds the question, calls match_documents with tenant_org_id = this org, then GPT answers from those chunks only. Ingest uses INGEST_WEBHOOK_URL: job rows in Postgres, n8n chunks/embeds, PATCH callback updates status. Invites optionally use INVITE_WEBHOOK_URL for email. All webhooks share X-Webhook-Secret with Vercel.",
+    },
+    {
+      title: "6. Analytics & audit",
       say: "Every chat turn is logged. Show Analytics, then Audit log for invites and settings changes.",
       adminPath: `/admin/analytics?${orgQuery}`,
       hrefLabel: "Analytics",
     },
     {
-      title: "6. Embed on any website",
+      title: "7. Embed on any website",
       say: "One script tag loads a floating widget — still scoped to this tenant.",
       href: embedUrl,
       hrefLabel: "Preview embed",
@@ -268,6 +273,49 @@ export default async function AdminPresentPage({
           </li>
         ))}
       </ol>
+
+      <details className="rounded-2xl border border-indigo-200 bg-indigo-50/40 p-5 shadow-sm open:shadow-md">
+        <summary className="cursor-pointer text-base font-semibold text-indigo-950">
+          Full presentation script + n8n diagrams
+        </summary>
+        <div className="mt-4 space-y-3 text-sm text-indigo-950/90">
+          <p>
+            Slide-by-slide speaker notes, architecture diagrams, and a dedicated n8n
+            section (chat RAG, ingest callbacks, invites) live in the repo:
+          </p>
+          <p>
+            <code className="block rounded-lg bg-white/80 px-3 py-2 text-xs">
+              docs/PRESENTATION.md
+            </code>
+          </p>
+          <p>
+            Open in GitHub:{" "}
+            <a
+              href="https://github.com/sadiawaseem4487-create/multi-tenant-support-saas/blob/main/docs/PRESENTATION.md"
+              target="_blank"
+              rel="noreferrer"
+              className="font-medium text-indigo-800 underline-offset-2 hover:underline"
+            >
+              PRESENTATION.md
+            </a>
+          </p>
+          <ul className="list-disc space-y-1 pl-5">
+            <li>
+              <strong>Chat:</strong> <code className="text-xs">/api/chat</code> → n8n →
+              OpenRouter embed + <code className="text-xs">match_documents(org_id)</code> → LLM
+            </li>
+            <li>
+              <strong>Ingest:</strong> <code className="text-xs">/api/orgs/…/ingest</code> →
+              n8n <code className="text-xs">company-ingest</code> → PATCH{" "}
+              <code className="text-xs">/api/internal/ingest-jobs/:id</code>
+            </li>
+            <li>
+              <strong>Invite:</strong> <code className="text-xs">/api/admin/invitations</code> →
+              optional invite webhook → accept link
+            </li>
+          </ul>
+        </div>
+      </details>
 
       <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
         <p className="font-semibold">Before production (not required for class demo)</p>
