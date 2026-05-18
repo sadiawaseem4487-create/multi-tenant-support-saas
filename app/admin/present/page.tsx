@@ -65,7 +65,10 @@ export default async function AdminPresentPage({
     },
     {
       title: "2. Branded public chat",
-      say: "Visitors use a branded URL — no login. Answers come only from this org's knowledge base.",
+      say:
+        org.slug === "demo-company"
+          ? "This demo tenant uses the NovaMart sample knowledge base. Say: each organization has its own URL and KB — switch org in admin to show Art craft vs NovaMart."
+          : "Visitors use a branded URL — no login. Answers come only from this org's knowledge base.",
       href: publicSiteUrl,
       hrefLabel: "Open public site",
     },

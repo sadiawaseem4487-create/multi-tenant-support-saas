@@ -18,11 +18,20 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   let hasMembership = false;
 
   if (user) {
-    await ensureTenantAccess({
-      authSubject: user.id,
-      email: user.primaryEmailAddress?.emailAddress ?? user.emailAddresses[0]?.emailAddress,
-      displayName: user.fullName ?? user.firstName ?? null,
-    });
+    try {
+      await ensureTenantAccess({
+        authSubject: user.id,
+        email: user.primaryEmailAddress?.emailAddress ?? user.emailAddresses[0]?.emailAddress,
+        displayName: user.fullName ?? user.firstName ?? null,
+      });
+    } catch (syncError) {
+      // Do not block admin for users who already have memberships (e.g. invited to multiple orgs).
+      const existing = await listMemberships(user.id).catch(() => []);
+      if (!existing.length) {
+        throw syncError;
+      }
+      console.error("[auth-sync] ensureTenantAccess failed for member with access", syncError);
+    }
 
     const memberships = await listMemberships(user.id);
     if (memberships.length > 0) {

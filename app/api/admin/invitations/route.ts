@@ -100,6 +100,23 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "DATABASE_URL is not set." }, { status: 500 });
     }
 
+    const [existingMember] = await sql<{ n: number }[]>`
+      select count(*)::int as n
+      from public.memberships m
+      join public.users u on u.id = m.user_id
+      where m.org_id = ${membership.orgId}::uuid
+        and lower(u.email) = ${email}
+    `;
+    if ((existingMember?.n ?? 0) > 0) {
+      return NextResponse.json(
+        {
+          error:
+            "This email is already a member of this organization. Change their role on the Members page instead of sending another invite.",
+        },
+        { status: 409 },
+      );
+    }
+
     const rawToken = randomBytes(24).toString("hex");
     const tokenHash = createHash("sha256").update(rawToken).digest("hex");
 
