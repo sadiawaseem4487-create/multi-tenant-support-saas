@@ -2,7 +2,7 @@ import { currentUser } from "@clerk/nextjs/server";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSql } from "@/lib/db";
-import { resolveOrgContext } from "@/lib/rbac";
+import { listMemberships, resolveOrgContext } from "@/lib/rbac";
 import { loadAnalytics } from "@/lib/analytics";
 import { loadKbStatus } from "@/lib/kb-status";
 
@@ -51,7 +51,28 @@ export default async function AdminPresentPage({
   const kb = await loadKbStatus(sql, context.orgId);
   const week = await loadAnalytics(sql, context.orgId, 7);
 
+  const memberships = await listMemberships(user.id);
+  const otherOrgs = await sql<
+    { id: string; name: string; siteSlug: string | null; slug: string }[]
+  >`
+    select id, name, site_slug as "siteSlug", slug
+    from public.orgs
+    where id = any(${memberships.map((m) => m.orgId)}::uuid[])
+    order by name asc
+  `;
+
   const siteSlug = org.siteSlug ?? org.slug;
+  const otherTenantSites = otherOrgs
+    .filter((o) => o.id !== context.orgId)
+    .map((o) => {
+      const slug = o.siteSlug ?? o.slug;
+      return {
+        orgId: o.id,
+        name: o.name,
+        publicSiteUrl: `${APP_ORIGIN}/site/${slug}`,
+        presentUrl: `/admin/present?orgId=${encodeURIComponent(o.id)}`,
+      };
+    });
   const publicSiteUrl = `${APP_ORIGIN}/site/${siteSlug}`;
   const embedUrl = `${APP_ORIGIN}/embed/${siteSlug}`;
   const embedScript = `<script src="${APP_ORIGIN}/embed.js" data-site-slug="${siteSlug}" async></script>`;
@@ -66,7 +87,7 @@ export default async function AdminPresentPage({
     {
       title: "2. Branded public chat",
       say:
-        org.slug === "demo-company"
+        siteSlug === "demo-company"
           ? "This demo tenant uses the NovaMart sample knowledge base. Say: each organization has its own URL and KB — switch org in admin to show Art craft vs NovaMart."
           : "Visitors use a branded URL — no login. Answers come only from this org's knowledge base.",
       href: publicSiteUrl,
@@ -140,6 +161,41 @@ export default async function AdminPresentPage({
           ))}
         </ul>
       </div>
+
+
+      {otherTenantSites.length > 0 ? (
+        <div className="rounded-2xl border border-violet-200 bg-violet-50/50 p-6 shadow-sm">
+          <h3 className="text-base font-semibold text-slate-900">Other tenants (isolation demo)</h3>
+          <p className="mt-1 text-sm text-slate-600">
+            Switch org, open each public site, and ask the same question. Answers should
+            differ per tenant.
+          </p>
+          <ul className="mt-4 space-y-3">
+            {otherTenantSites.map((t) => (
+              <li
+                key={t.orgId}
+                className="flex flex-wrap items-center gap-2 rounded-xl border border-violet-100 bg-white px-4 py-3"
+              >
+                <span className="text-sm font-medium text-slate-900">{t.name}</span>
+                <a
+                  href={t.publicSiteUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-700"
+                >
+                  Public chat
+                </a>
+                <Link
+                  href={t.presentUrl}
+                  className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                >
+                  Present script
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <h3 className="text-base font-semibold text-slate-900">Quick links</h3>

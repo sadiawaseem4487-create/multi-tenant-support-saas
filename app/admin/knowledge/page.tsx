@@ -4,6 +4,7 @@ import { IngestJobsPanel } from "@/components/admin/IngestJobsPanel";
 import { KbFilesPanel, type KbFile } from "@/components/admin/KbFilesPanel";
 import { KbStatusCard } from "@/components/admin/KbStatusCard";
 import { getSql } from "@/lib/db";
+import { getKbIngestPreset } from "@/lib/kb-presets";
 import { loadKbStatus } from "@/lib/kb-status";
 import { requireRole, resolveOrgContext } from "@/lib/rbac";
 
@@ -133,9 +134,21 @@ export default async function AdminKnowledgePage({
 
   const kbStatus = await loadKbStatus(sql, context.orgId);
 
+  const [orgRow] = await sql<{ siteSlug: string | null; slug: string }[]>`
+    select site_slug as "siteSlug", slug from public.orgs where id = ${context.orgId}::uuid limit 1
+  `;
+  const siteSlug = orgRow?.siteSlug ?? orgRow?.slug ?? null;
+  const ingestDefaults = getKbIngestPreset(siteSlug);
+  const stubIngestWarning =
+    kbStatus.totalChunks === 0 && kbStatus.lastSuccessfulIngestAt !== null;
+
   return (
     <section className="space-y-6">
-      <KbStatusCard orgName={context.orgName} status={kbStatus} />
+      <KbStatusCard
+        orgName={context.orgName}
+        status={kbStatus}
+        stubIngestWarning={stubIngestWarning}
+      />
       <KbFilesPanel
         orgId={context.orgId}
         canDelete={canStartIngest}
@@ -149,6 +162,7 @@ export default async function AdminKnowledgePage({
         canStartIngest={canStartIngest}
         jobs={jobs}
         documents={documents}
+        ingestDefaults={ingestDefaults}
       />
     </section>
   );

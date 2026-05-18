@@ -13,6 +13,7 @@
     "db:migrate:rls": "node --env-file=.env.local scripts/migrate.mjs apply --include-optional",
     "db:backfill-docs-org": "node --env-file=.env.local scripts/backfill-documents-org.mjs",
     "verify:tenant-isolation": "node --env-file=.env.local scripts/verify-tenant-isolation.mjs",
+    "ingest:kb-url": "node --env-file=.env.local scripts/ingest-kb-url.mjs",
     "rotate:secrets": "node scripts/rotate-secrets.mjs"
   },
   "dependencies": {

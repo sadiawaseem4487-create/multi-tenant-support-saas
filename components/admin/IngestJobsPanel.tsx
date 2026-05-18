@@ -22,12 +22,18 @@ type KbDocument = {
   updatedAt: string;
 };
 
+type IngestDefaults = {
+  title: string;
+  documentUrl: string;
+};
+
 type Props = {
   orgId: string;
   orgName: string;
   canStartIngest: boolean;
   jobs: IngestJob[];
   documents: KbDocument[];
+  ingestDefaults?: IngestDefaults | null;
 };
 
 const SOURCE_PRESETS = [
@@ -49,11 +55,14 @@ export function IngestJobsPanel({
   canStartIngest,
   jobs,
   documents,
+  ingestDefaults = null,
 }: Props) {
   const router = useRouter();
-  const [source, setSource] = useState(SOURCE_PRESETS[0].value);
-  const [title, setTitle] = useState("");
-  const [documentUrl, setDocumentUrl] = useState("");
+  const [source, setSource] = useState(
+    ingestDefaults ? "web-url" : SOURCE_PRESETS[0].value,
+  );
+  const [title, setTitle] = useState(ingestDefaults?.title ?? "");
+  const [documentUrl, setDocumentUrl] = useState(ingestDefaults?.documentUrl ?? "");
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -137,9 +146,24 @@ export function IngestJobsPanel({
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <h3 className="text-base font-semibold text-slate-900">Add knowledge from a URL</h3>
         <p className="mt-1 text-xs text-slate-500">
-          Provide a public URL to a PDF, HTML page, or document. The ingest workflow will
-          fetch, chunk, and embed it into your organization&apos;s knowledge base.
+          Provide a public URL to a PDF, HTML page, or markdown file. n8n must fetch and
+          embed content — if jobs show success but chunk count stays 0, use{" "}
+          <code className="rounded bg-slate-100 px-1">npm run ingest:kb-url</code> (see{" "}
+          <code className="rounded bg-slate-100 px-1">.env.example</code>).
         </p>
+        {ingestDefaults ? (
+          <button
+            type="button"
+            onClick={() => {
+              setSource("web-url");
+              setTitle(ingestDefaults.title);
+              setDocumentUrl(ingestDefaults.documentUrl);
+            }}
+            className="mt-2 text-xs font-medium text-teal-700 underline-offset-2 hover:underline"
+          >
+            Fill sample URL for this org
+          </button>
+        ) : null}
         {canStartIngest ? (
           <form className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3" onSubmit={submitIngest}>
             <label className="flex flex-col gap-1 text-xs font-medium text-slate-700 sm:col-span-1">

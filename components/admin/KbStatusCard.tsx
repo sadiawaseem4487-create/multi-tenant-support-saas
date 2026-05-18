@@ -14,9 +14,13 @@ function formatRelative(iso: string | null): string {
   return `${Math.floor(h / 24)}d ago`;
 }
 
+function ingestFailed(status: KbStatusPayload): boolean {
+  return status.lastIngestStatus === "failed" && Boolean(status.lastIngestError);
+}
+
 function ingestHealthTone(status: KbStatusPayload): "ok" | "warn" | "muted" {
   if (status.activeJobCount > 0) return "warn";
-  if (status.lastIngestStatus === "failed") return "warn";
+  if (ingestFailed(status)) return "warn";
   if (status.lastSuccessfulIngestAt) return "ok";
   return "muted";
 }
@@ -24,15 +28,18 @@ function ingestHealthTone(status: KbStatusPayload): "ok" | "warn" | "muted" {
 export function KbStatusCard({
   orgName,
   status,
+  stubIngestWarning = false,
 }: {
   orgName: string;
   status: KbStatusPayload;
+  /** Job marked success but no vector chunks (n8n webhook stub). */
+  stubIngestWarning?: boolean;
 }) {
   const health = ingestHealthTone(status);
   const healthLabel =
     status.activeJobCount > 0
       ? `${status.activeJobCount} job${status.activeJobCount === 1 ? "" : "s"} running`
-      : status.lastIngestStatus === "failed"
+      : ingestFailed(status)
         ? "Last ingest failed"
         : status.lastSuccessfulIngestAt
           ? "Pipeline healthy"
@@ -100,7 +107,17 @@ export function KbStatusCard({
         </p>
       </div>
 
-      {status.lastIngestStatus === "failed" && status.lastIngestError ? (
+      {stubIngestWarning ? (
+        <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          Ingest job succeeded but <strong>0 chunks</strong> are indexed. The n8n ingest
+          webhook may only update job status (no fetch/embed yet). Use{" "}
+          <code className="rounded bg-white/80 px-1">npm run ingest:kb-url -- --slug … --url …</code>{" "}
+          with <code className="rounded bg-white/80 px-1">OPENROUTER_API_KEY</code>, or Google
+          Drive ingest in n8n.
+        </p>
+      ) : null}
+
+      {ingestFailed(status) ? (
         <p className="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
           Last ingest error ({formatRelative(status.lastIngestAt)}):{" "}
           <span className="font-medium">{status.lastIngestError}</span>

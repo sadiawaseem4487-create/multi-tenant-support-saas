@@ -62,6 +62,13 @@ export async function loadKbStatus(sql: Sql, orgId: string): Promise<KbStatusPay
     limit 1
   `;
 
+  const successAt = lastSuccess?.updatedAt?.getTime() ?? 0;
+  const lastJobAt = lastJob?.updatedAt?.getTime() ?? 0;
+  const lastFailureIsStale =
+    lastJob?.status === "failed" &&
+    successAt > 0 &&
+    successAt >= lastJobAt;
+
   const [{ activeJobCount }] = await sql<{ activeJobCount: number }[]>`
     select count(*)::int as "activeJobCount"
     from public.ingest_jobs
@@ -74,9 +81,11 @@ export async function loadKbStatus(sql: Sql, orgId: string): Promise<KbStatusPay
     uniqueFiles,
     kbDocumentCount,
     lastSuccessfulIngestAt: lastSuccess?.updatedAt?.toISOString() ?? null,
-    lastIngestStatus: lastJob?.status ?? null,
-    lastIngestAt: lastJob?.updatedAt?.toISOString() ?? null,
-    lastIngestError: lastJob?.error ?? null,
+    lastIngestStatus: lastFailureIsStale ? "success" : (lastJob?.status ?? null),
+    lastIngestAt: lastFailureIsStale
+      ? (lastSuccess?.updatedAt?.toISOString() ?? null)
+      : (lastJob?.updatedAt?.toISOString() ?? null),
+    lastIngestError: lastFailureIsStale ? null : (lastJob?.error ?? null),
     activeJobCount,
     chatModel: process.env.CHAT_MODEL?.trim() || DEFAULT_CHAT_MODEL,
     embeddingModel:
