@@ -28,24 +28,31 @@ For each node: **Create Embedding**, **Create Embedding1**, **Generate Answer**:
 
 ---
 
-## Part B — Supabase RPC (Search Similar Chunks)
+## Part B — Supabase RPC (Search Similar Chunks) — **do this for production**
+
+Your Supabase **service role key** must not live in the workflow JSON. This is the most important security step after the webhook secret.
+
+Get the key: Supabase dashboard → **Project Settings** → **API** → **service_role** (Reveal / copy).  
+It often starts with `eyJ…` or `sb_secret_…`.
 
 ### B1. Create credential
 
-1. **Credentials** → **Add credential** → **Custom Auth**.
-2. Name: `Supabase Service`.
-3. JSON (replace with your service role key):
+1. **Credentials** → **Add credential** → search **Custom Auth** → **Create**.
+2. **Credential name** (top): `Supabase Service`
+3. In the **JSON** box, paste (replace `PASTE_KEY_HERE` twice with the same key):
 
 ```json
 {
   "headers": {
-    "apikey": "<SUPABASE_SERVICE_ROLE_KEY>",
-    "Authorization": "Bearer <SUPABASE_SERVICE_ROLE_KEY>"
+    "apikey": "PASTE_KEY_HERE",
+    "Authorization": "Bearer PASTE_KEY_HERE"
   }
 }
 ```
 
-4. **Save**.
+4. **Save** (status should show Saved).
+
+> Custom Auth sends **two** headers. Header Auth only sends one — that is why Supabase uses Custom Auth here.
 
 ### B2. Wire into node
 

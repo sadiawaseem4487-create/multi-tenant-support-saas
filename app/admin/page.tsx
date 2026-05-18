@@ -100,8 +100,6 @@ export default async function AdminHomePage({
     chat.greeting !== defaultChat.greeting ||
     chat.fallbackMessage !== defaultChat.fallbackMessage ||
     chat.suggestions.join("|") !== defaultChat.suggestions.join("|");
-  const hasFirstChat = week.totals.totalMessages > 0;
-
   const checklist: ChecklistItem[] = [
     {
       key: "site_slug",
@@ -141,7 +139,7 @@ export default async function AdminHomePage({
       key: "embed",
       label: "Install the embed widget",
       hint: "One-line <script> tag for your customers' websites.",
-      done: hasFirstChat,
+      done: Boolean(org.siteSlug),
       href: `/admin/settings?${orgQuery}#embed`,
       cta: org.siteSlug ? "Copy snippet" : "Set slug first",
     },
@@ -165,6 +163,12 @@ export default async function AdminHomePage({
           plan <span className="font-medium">{org.plan}</span>
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-2">
+          <Link
+            href={`/admin/present?${orgQuery}`}
+            className="rounded-full bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-indigo-700"
+          >
+            Presentation guide →
+          </Link>
           {org.siteSlug ? (
             <Link
               href={`/site/${org.siteSlug}`}

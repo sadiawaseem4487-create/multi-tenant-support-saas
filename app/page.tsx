@@ -30,6 +30,12 @@ export default function Home() {
             >
               Chat
             </a>
+            <a
+              href="/site/demo-company"
+              className="hidden rounded-full bg-indigo-50 px-3 py-1.5 text-indigo-800 ring-1 ring-indigo-200/80 transition hover:bg-indigo-100 sm:inline"
+            >
+              SaaS demo
+            </a>
             <PublicNavAuth />
           </nav>
         </div>
