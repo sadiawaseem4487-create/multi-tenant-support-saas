@@ -15,12 +15,13 @@ type OrgResponse = {
   memberships: OrgItem[];
 };
 
-export function OrgSwitcher() {
+export function OrgSwitcher({ variant = "sidebar" }: { variant?: "sidebar" | "inline" }) {
   const [data, setData] = useState<OrgResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const selectedOrgId = searchParams.get("orgId");
+  const isSidebar = variant === "sidebar";
 
   useEffect(() => {
     let mounted = true;
@@ -46,28 +47,43 @@ export function OrgSwitcher() {
   }, [selectedOrgId]);
 
   if (error) {
-    return <p className="text-xs text-rose-600">{error}</p>;
+    return <p className="text-xs text-rose-300">{error}</p>;
   }
 
   if (!data) {
     return (
-      <div className="h-10 w-48 animate-pulse rounded-lg bg-slate-100" aria-hidden />
+      <div
+        className={
+          isSidebar
+            ? "mx-3 h-10 animate-pulse rounded-lg bg-white/10"
+            : "h-10 w-48 animate-pulse rounded-lg bg-slate-100"
+        }
+        aria-hidden
+      />
     );
   }
 
   if (!data.memberships.length || !data.selectedOrgId) {
-    return <p className="text-sm text-slate-500">No organizations</p>;
+    return <p className="px-3 text-sm text-slate-400">No organizations</p>;
   }
 
-  const selected = data.memberships.find((m) => m.orgId === data.selectedOrgId);
+  const selectClass = isSidebar
+    ? "w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2.5 text-sm font-medium text-white shadow-sm focus:border-teal-400 focus:bg-white/15 focus:outline-none focus:ring-2 focus:ring-teal-500/40"
+    : "w-full min-w-[12rem] max-w-md rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-900 shadow-sm focus:border-teal-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-200/60 sm:w-auto";
 
   return (
-    <label className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-      <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+    <label className={isSidebar ? "block px-3" : "flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3"}>
+      <span
+        className={
+          isSidebar
+            ? "mb-1.5 block text-[10px] font-semibold uppercase tracking-wider text-slate-400"
+            : "text-[11px] font-semibold uppercase tracking-wider text-slate-500"
+        }
+      >
         Workspace
       </span>
       <select
-        className="w-full min-w-[12rem] max-w-md rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-900 shadow-sm focus:border-teal-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-200/60 sm:w-auto"
+        className={selectClass}
         value={data.selectedOrgId}
         onChange={(event) => {
           const next = new URLSearchParams(searchParams.toString());
@@ -76,16 +92,11 @@ export function OrgSwitcher() {
         }}
       >
         {data.memberships.map((membership) => (
-          <option key={membership.orgId} value={membership.orgId}>
+          <option key={membership.orgId} value={membership.orgId} className="text-slate-900">
             {membership.orgName} · {membership.role.replace(/_/g, " ")}
           </option>
         ))}
       </select>
-      {selected ? (
-        <span className="hidden text-xs text-slate-500 lg:inline">
-          {data.memberships.length} org{data.memberships.length === 1 ? "" : "s"}
-        </span>
-      ) : null}
     </label>
   );
 }
