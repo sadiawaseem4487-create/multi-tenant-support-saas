@@ -175,6 +175,7 @@ SQL migrations live in `db/migrations/` (synced from `~/company costumer service
 - `STAGING_DEPLOY_CHECKLIST.md` — staging runbook.
 - `RBAC_MANUAL_TEST_MATRIX.md` — role × permission verification matrix.
 - `WEBHOOK_SECURITY_ROTATION.md` — webhook secret rotation runbook.
+- `KB_PER_ORG.md` — one KB markdown file per organization + ingest URLs.
 - `N8N_CREDENTIALS_SETUP.md` — move OpenRouter/Supabase/webhook secret into n8n credentials.
 - `N8N_INGEST_RETRY.md` — ingest failure handling and retry runbook.
 - `SENTRY_SETUP.md` — optional Sentry DSN setup.
