@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 import { currentUser } from "@clerk/nextjs/server";
 import { AdminUserMenu } from "@/components/AdminUserMenu";
-import { OrgSwitcher } from "@/components/admin/OrgSwitcher";
+import { AdminHeaderBar } from "@/components/admin/AdminHeaderBar";
 import { ensureTenantAccess } from "@/lib/auth-sync";
 import { listMemberships } from "@/lib/rbac";
 
@@ -13,8 +14,6 @@ export const metadata: Metadata = {
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const user = await currentUser();
-  let orgName: string | null = null;
-  let roleLabel: string | null = null;
   let hasMembership = false;
 
   if (user) {
@@ -25,7 +24,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         displayName: user.fullName ?? user.firstName ?? null,
       });
     } catch (syncError) {
-      // Do not block admin for users who already have memberships (e.g. invited to multiple orgs).
       const existing = await listMemberships(user.id).catch(() => []);
       if (!existing.length) {
         throw syncError;
@@ -34,11 +32,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     }
 
     const memberships = await listMemberships(user.id);
-    if (memberships.length > 0) {
-      hasMembership = true;
-      orgName = memberships[0].orgName;
-      roleLabel = memberships[0].role;
-    }
+    hasMembership = memberships.length > 0;
   }
 
   const email =
@@ -46,36 +40,45 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <div className="min-h-screen bg-slate-100">
-      <header className="border-b border-slate-200 bg-white px-6 py-4">
-        <div className="mx-auto flex max-w-5xl flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-teal-700">
-              Admin console
-            </p>
-            <h1 className="text-lg font-semibold text-slate-900">Operations</h1>
-            {email ? (
-              <p className="text-sm text-slate-600 sm:max-w-[36rem]">
-                Signed in as {email}
-                {orgName ? ` · ${orgName}` : ""}
-                {roleLabel ? ` · ${roleLabel}` : ""}
+      <header className="border-b border-slate-200 bg-white shadow-sm">
+        <div className="mx-auto max-w-6xl px-4 py-5 sm:px-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-teal-700">
+                Admin console
               </p>
-            ) : (
-              <p className="text-sm text-slate-600">Organization context loads after sign-in.</p>
-            )}
+              <h1 className="mt-0.5 text-xl font-bold tracking-tight text-slate-900">
+                Operations
+              </h1>
+              {email ? (
+                <p className="mt-1.5 text-sm leading-relaxed text-slate-600">
+                  <span className="text-slate-500">Signed in as</span>{" "}
+                  <span className="font-medium text-slate-800">{email}</span>
+                </p>
+              ) : (
+                <p className="mt-1.5 text-sm text-slate-600">
+                  Organization context loads after sign-in.
+                </p>
+              )}
+            </div>
+            <div className="flex shrink-0 items-center gap-3 self-start sm:pt-1">
+              <Link
+                href="/"
+                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
+              >
+                Public site
+              </Link>
+              <AdminUserMenu />
+            </div>
           </div>
-          <div className="flex flex-wrap items-center gap-3 sm:flex-nowrap sm:gap-4 sm:shrink-0">
-            {user && hasMembership ? <OrgSwitcher /> : null}
-            <Link
-              href="/"
-              className="text-sm font-medium text-teal-800 underline-offset-4 hover:underline"
-            >
-              Public site
-            </Link>
-            <AdminUserMenu />
-          </div>
+          {user && hasMembership ? (
+            <Suspense fallback={null}>
+              <AdminHeaderBar />
+            </Suspense>
+          ) : null}
         </div>
       </header>
-      <div className="mx-auto max-w-5xl px-6 py-8">
+      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
         {user && !hasMembership ? (
           <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-amber-900 shadow-sm">
             <h2 className="text-lg font-semibold">No organization access yet</h2>

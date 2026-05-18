@@ -71,8 +71,8 @@ export function KbStatusCard({
         </span>
       </div>
 
-      <div className="mt-5 grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <Stat label="Vector chunks" value={status.totalChunks.toLocaleString()} />
+      <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <Stat label="Vector chunks" value={status.totalChunks.toLocaleString()} highlight />
         <Stat label="Source files" value={status.uniqueFiles.toLocaleString()} />
         <Stat
           label="Last successful ingest"
@@ -127,13 +127,35 @@ export function KbStatusCard({
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({
+  label,
+  value,
+  highlight = false,
+}: {
+  label: string;
+  value: string;
+  highlight?: boolean;
+}) {
   return (
-    <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-4">
-      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+    <div
+      className={[
+        "rounded-xl border p-4",
+        highlight
+          ? "border-teal-200 bg-gradient-to-br from-teal-50/90 to-white"
+          : "border-slate-100 bg-slate-50/60",
+      ].join(" ")}
+    >
+      <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
         {label}
       </p>
-      <p className="mt-1 text-lg font-semibold text-slate-900">{value}</p>
+      <p
+        className={[
+          "mt-2 text-2xl font-bold tabular-nums tracking-tight",
+          highlight ? "text-teal-900" : "text-slate-900",
+        ].join(" ")}
+      >
+        {value}
+      </p>
     </div>
   );
 }

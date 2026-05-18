@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -51,18 +50,24 @@ export function OrgSwitcher() {
   }
 
   if (!data) {
-    return <p className="text-xs text-slate-500">Loading organizations...</p>;
+    return (
+      <div className="h-10 w-48 animate-pulse rounded-lg bg-slate-100" aria-hidden />
+    );
   }
 
   if (!data.memberships.length || !data.selectedOrgId) {
-    return <p className="text-xs text-slate-500">No organizations</p>;
+    return <p className="text-sm text-slate-500">No organizations</p>;
   }
 
+  const selected = data.memberships.find((m) => m.orgId === data.selectedOrgId);
+
   return (
-    <div className="flex items-center gap-2">
-      <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Org</span>
+    <label className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+      <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+        Workspace
+      </span>
       <select
-        className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-sm text-slate-800"
+        className="w-full min-w-[12rem] max-w-md rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-900 shadow-sm focus:border-teal-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-200/60 sm:w-auto"
         value={data.selectedOrgId}
         onChange={(event) => {
           const next = new URLSearchParams(searchParams.toString());
@@ -72,58 +77,15 @@ export function OrgSwitcher() {
       >
         {data.memberships.map((membership) => (
           <option key={membership.orgId} value={membership.orgId}>
-            {membership.orgName} ({membership.role})
+            {membership.orgName} · {membership.role.replace(/_/g, " ")}
           </option>
         ))}
       </select>
-      <Link
-        href={`/admin?orgId=${encodeURIComponent(data.selectedOrgId)}`}
-        className="text-sm font-medium text-teal-800 underline-offset-4 hover:underline"
-      >
-        Home
-      </Link>
-      <Link
-        href={`/admin/present?orgId=${encodeURIComponent(data.selectedOrgId)}`}
-        className="text-sm font-semibold text-indigo-800 underline-offset-4 hover:underline"
-      >
-        Present
-      </Link>
-      <Link
-        href={`/admin/members?orgId=${encodeURIComponent(data.selectedOrgId)}`}
-        className="text-sm font-medium text-teal-800 underline-offset-4 hover:underline"
-      >
-        Members
-      </Link>
-      <Link
-        href={`/admin/knowledge?orgId=${encodeURIComponent(data.selectedOrgId)}`}
-        className="text-sm font-medium text-teal-800 underline-offset-4 hover:underline"
-      >
-        Knowledge
-      </Link>
-      <Link
-        href={`/admin/analytics?orgId=${encodeURIComponent(data.selectedOrgId)}`}
-        className="text-sm font-medium text-teal-800 underline-offset-4 hover:underline"
-      >
-        Analytics
-      </Link>
-      <Link
-        href={`/admin/audit?orgId=${encodeURIComponent(data.selectedOrgId)}`}
-        className="text-sm font-medium text-teal-800 underline-offset-4 hover:underline"
-      >
-        Audit
-      </Link>
-      <Link
-        href={`/admin/settings?orgId=${encodeURIComponent(data.selectedOrgId)}`}
-        className="text-sm font-medium text-teal-800 underline-offset-4 hover:underline"
-      >
-        Settings
-      </Link>
-      <Link
-        href="/admin/organizations"
-        className="text-sm font-medium text-teal-800 underline-offset-4 hover:underline"
-      >
-        Organizations
-      </Link>
-    </div>
+      {selected ? (
+        <span className="hidden text-xs text-slate-500 lg:inline">
+          {data.memberships.length} org{data.memberships.length === 1 ? "" : "s"}
+        </span>
+      ) : null}
+    </label>
   );
 }
