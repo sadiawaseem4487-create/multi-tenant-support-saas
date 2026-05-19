@@ -102,6 +102,12 @@ export function SupportChat({
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    setMessages([{ role: "bot", text: greetingText }]);
+    setInput("");
+    setLoading(false);
+  }, [siteSlug, greetingText]);
+
+  useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 

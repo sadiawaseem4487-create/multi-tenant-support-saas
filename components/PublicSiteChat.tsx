@@ -17,6 +17,7 @@ export function PublicSiteChat({
 }: Props) {
   return (
     <SupportChat
+      key={siteSlug}
       brandName={brandName}
       brandTagline={brandTagline}
       siteSlug={siteSlug}

@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { AdminUserMenu } from "@/components/AdminUserMenu";
 import { AdminNavWithOrg } from "@/components/admin/AdminNav";
+import { AdminPublicChatLink } from "@/components/admin/AdminPublicChatLink";
 import { OrgSwitcher } from "@/components/admin/OrgSwitcher";
 
 function SidebarNav({ onNavigate }: { onNavigate: () => void }) {
@@ -62,12 +63,15 @@ export function AdminShell({
       </div>
 
       <div className="border-t border-white/10 p-4 space-y-3">
+        <Suspense fallback={<div className="h-9 animate-pulse rounded-lg bg-white/10" />}>
+          <AdminPublicChatLink />
+        </Suspense>
         <Link
           href="/"
           onClick={closeMobile}
           className="flex w-full items-center justify-center rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm font-medium text-slate-200 transition hover:bg-white/10 hover:text-white"
         >
-          Public site
+          Marketing home
         </Link>
         {email ? (
           <p className="truncate px-1 text-xs text-slate-500" title={email}>

@@ -37,13 +37,28 @@ export async function GET(request: Request) {
     }
     const selected = await resolveOrgContext(userId, orgId);
 
+    const sql = getSql();
+    const siteSlugs =
+      sql && memberships.length
+        ? await sql<{ id: string; siteSlug: string | null; slug: string }[]>`
+            select id, site_slug as "siteSlug", slug
+            from public.orgs
+            where id = any(${memberships.map((m) => m.orgId)}::uuid[])
+          `
+        : [];
+    const slugByOrgId = new Map(
+      siteSlugs.map((row) => [row.id, row.siteSlug ?? row.slug]),
+    );
+
     return NextResponse.json({
       selectedOrgId: selected.orgId,
       selectedOrgName: selected.orgName,
+      selectedSiteSlug: slugByOrgId.get(selected.orgId) ?? null,
       memberships: memberships.map((m) => ({
         orgId: m.orgId,
         orgName: m.orgName,
         role: m.role,
+        siteSlug: slugByOrgId.get(m.orgId) ?? null,
       })),
     });
   } catch (error) {

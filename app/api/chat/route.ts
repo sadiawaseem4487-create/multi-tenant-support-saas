@@ -128,19 +128,22 @@ export async function POST(req: NextRequest) {
           orgName: string;
         }
       | null = null;
-    if (userId) {
+
+    // Public branded sites (/site/[slug], embed) must win over the signed-in user's
+    // default admin org — otherwise every tenant chat looks like one company.
+    if (requestedSiteSlug) {
+      const publicOrg = await resolveBySiteSlug(requestedSiteSlug);
+      if (publicOrg) {
+        orgContext = { orgId: publicOrg.id, orgName: publicOrg.name };
+        logSource = "site_slug";
+      }
+    } else if (userId) {
       try {
         const resolved = await resolveOrgContext(userId, requestedOrgId);
         orgContext = { orgId: resolved.orgId, orgName: resolved.orgName };
         logSource = "authenticated";
       } catch {
         orgContext = null;
-      }
-    } else if (requestedSiteSlug) {
-      const publicOrg = await resolveBySiteSlug(requestedSiteSlug);
-      if (publicOrg) {
-        orgContext = { orgId: publicOrg.id, orgName: publicOrg.name };
-        logSource = "site_slug";
       }
     }
     logOrgId = orgContext?.orgId ?? null;
