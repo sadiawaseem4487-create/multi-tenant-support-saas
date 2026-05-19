@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Multi-Tenant AI Support — Presentation</title>
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Serif+Display&display=swap");
+
+    :root {
+      --teal: #0d9488;
+      --teal-dark: #0f766e;
+      --indigo: #4f46e5;
+      --slate: #1e293b;
+      --muted: #64748b;
+      --bg: #f8fafc;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "DM Sans", system-ui, sans-serif;
+      color: var(--slate);
+      background: #e2e8f0;
+      line-height: 1.5;
+    }
+
+    .slide {
+      width: 297mm;
+      min-height: 210mm;
+      margin: 12px auto;
+      padding: 48px 56px;
+      background: white;
+      box-shadow: 0 4px 24px rgba(0,0,0,.08);
+      page-break-after: always;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .slide:last-child { page-break-after: auto; }
+
+    .slide--cover {
+      background: linear-gradient(135deg, #0f766e 0%, #134e4a 45%, #312e81 100%);
+      color: white;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .slide--cover h1 {
+      font-family: "DM Serif Display", Georgia, serif;
+      font-size: 42px;
+      font-weight: 400;
+      line-height: 1.15;
+      max-width: 18ch;
+    }
+
+    .slide--cover .tagline {
+      margin-top: 20px;
+      font-size: 20px;
+      opacity: .92;
+      max-width: 32ch;
+    }
+
+    .slide--cover .meta {
+      margin-top: 48px;
+      font-size: 14px;
+      opacity: .75;
+    }
+
+    .slide--section {
+      background: linear-gradient(180deg, #f0fdfa 0%, white 35%);
+    }
+
+  .kicker {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: var(--teal);
+      margin-bottom: 8px;
+    }
+
+    h2 {
+      font-family: "DM Serif Display", Georgia, serif;
+      font-size: 32px;
+      font-weight: 400;
+      color: var(--slate);
+      margin-bottom: 24px;
+      line-height: 1.2;
+    }
+
+    h3 {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--teal-dark);
+      margin: 20px 0 10px;
+    }
+
+    p, li {
+      font-size: 17px;
+      color: #334155;
+      margin-bottom: 12px;
+    }
+
+    ul { padding-left: 1.25rem; margin-bottom: 16px; }
+    li { margin-bottom: 8px; }
+
+    .big-idea {
+      font-size: 22px;
+      font-weight: 600;
+      color: var(--slate);
+      border-left: 4px solid var(--teal);
+      padding-left: 20px;
+      margin: 24px 0;
+      line-height: 1.4;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-top: 20px;
+    }
+
+    .card {
+      background: var(--bg);
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 20px;
+    }
+
+    .card h4 {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: var(--teal-dark);
+    }
+
+    .card p { font-size: 15px; margin: 0; }
+
+    .diagram {
+      margin: 24px 0;
+      padding: 24px;
+      background: #f8fafc;
+      border-radius: 12px;
+      border: 1px solid #e2e8f0;
+    }
+
+    .flow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .flow .box {
+      background: white;
+      border: 2px solid var(--teal);
+      color: var(--teal-dark);
+      padding: 12px 16px;
+      border-radius: 10px;
+      text-align: center;
+      min-width: 100px;
+    }
+
+    .flow .box--highlight {
+      background: var(--indigo);
+      border-color: var(--indigo);
+      color: white;
+    }
+
+    .flow .arrow { color: var(--muted); font-size: 20px; }
+
+    .speaker {
+      position: absolute;
+      bottom: 32px;
+      left: 56px;
+      right: 56px;
+      padding: 14px 18px;
+      background: #fffbeb;
+      border-left: 4px solid #f59e0b;
+      font-size: 14px;
+      color: #92400e;
+      border-radius: 0 8px 8px 0;
+    }
+
+    .speaker strong { display: block; margin-bottom: 4px; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+
+    .footer-num {
+      position: absolute;
+      bottom: 32px;
+      right: 56px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .demo-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 15px;
+      margin-top: 16px;
+    }
+
+    .demo-table th, .demo-table td {
+      border: 1px solid #e2e8f0;
+      padding: 12px 14px;
+      text-align: left;
+    }
+
+    .demo-table th {
+      background: #f0fdfa;
+      font-weight: 700;
+      color: var(--teal-dark);
+    }
+
+    @media print {
+      body { background: white; }
+      .slide {
+        margin: 0;
+        box-shadow: none;
+        width: 100%;
+        min-height: 100vh;
+      }
+      .no-print { display: none !important; }
+    }
+
+    .print-hint {
+      max-width: 297mm;
+      margin: 16px auto;
+      padding: 16px 24px;
+      background: #fef3c7;
+      border-radius: 8px;
+      font-size: 14px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <p class="print-hint no-print">
+    <strong>Save as PDF:</strong> Open this file in Chrome → File → Print → Destination: “Save as PDF” → Layout: Landscape → Margins: None → Background graphics: On
+  </p>
+
+  <!-- SLIDE 1 -->
+  <section class="slide slide--cover">
+    <p class="kicker" style="color:#99f6e4">Customer support platform</p>
+    <h1>AI help for every company—without mixing their data</h1>
+    <p class="tagline">One product. Many organizations. Each with its own knowledge, brand, and chat.</p>
+    <p class="meta">Live demo: multi-tenant-support-saas.vercel.app</p>
+  </section>
+
+  <!-- SLIDE 2 -->
+  <section class="slide">
+    <p class="kicker">The problem</p>
+    <h2>One chatbot is not enough for SaaS</h2>
+    <p class="big-idea">When you sell software to many companies, each customer needs answers from <em>their</em> policies—not someone else’s.</p>
+    <ul>
+      <li><strong>Privacy</strong> — Company A’s documents must never appear in Company B’s replies</li>
+      <li><strong>Branding</strong> — Each client wants their name, colors, and tone</li>
+      <li><strong>Control</strong> — Owners invite staff and update knowledge without calling engineering every time</li>
+    </ul>
+    <p class="speaker"><strong>Say in your own words</strong> “Think of it like apartment buildings: same building system, separate locked units.”</p>
+    <span class="footer-num">2</span>
+  </section>
+
+  <!-- SLIDE 3 -->
+  <section class="slide">
+    <p class="kicker">Our solution</p>
+    <h2>What we built in one sentence</h2>
+    <p class="big-idea">A web platform where each organization signs in, uploads knowledge, and gets a branded AI chat—powered by smart automation behind the scenes.</p>
+    <div class="grid-2">
+      <div class="card">
+        <h4>For business users</h4>
+        <p>Admin dashboard: invite team, upload help content, see if the bot is healthy, read chat analytics.</p>
+      </div>
+      <div class="card">
+        <h4>For end customers</h4>
+        <p>A simple chat on a custom web address—or a widget embedded on their website.</p>
+      </div>
+    </div>
+    <p class="speaker"><strong>Say</strong> “You don’t need to understand AI models to run it—if you can use email and a website, you can use this.”</p>
+    <span class="footer-num">3</span>
+  </section>
+
+  <!-- SLIDE 4 -->
+  <section class="slide slide--section">
+    <p class="kicker">Big picture</p>
+    <h2>Three parts working together</h2>
+    <div class="diagram">
+      <div class="flow">
+        <span class="box">Your website<br><small>sign-in & admin</small></span>
+        <span class="arrow">→</span>
+        <span class="box box--highlight">n8n<br><small>automation & AI steps</small></span>
+        <span class="arrow">→</span>
+        <span class="box">Secure database<br><small>memories per company</small></span>
+      </div>
+    </div>
+    <ul>
+      <li><strong>Website (Next.js)</strong> — What people see and click; handles logins and permissions</li>
+      <li><strong>n8n</strong> — The “engine room” that reads questions, finds the right paragraphs, and writes answers</li>
+      <li><strong>Database</strong> — Stores each company’s knowledge separately, like labeled filing cabinets</li>
+    </ul>
+    <p class="speaker"><strong>Key message</strong> “We split <em>what users see</em> from <em>how answers are produced</em>. That makes the product flexible.”</p>
+    <span class="footer-num">4</span>
+  </section>
+
+  <!-- SLIDE 5 - N8N INTRO -->
+  <section class="slide slide--section">
+    <p class="kicker">Star of the show</p>
+    <h2>What is n8n—and why we use it?</h2>
+    <p class="big-idea">n8n is a visual automation tool. It connects steps: “when a question arrives → find relevant text → ask the AI → send the reply.”</p>
+    <div class="grid-2">
+      <div class="card">
+        <h4>Without n8n</h4>
+        <p>Every change to how the bot thinks would require programmers to redeploy the whole app.</p>
+      </div>
+      <div class="card">
+        <h4>With n8n</h4>
+        <p>Operators can adjust workflows, swap AI providers, and add steps (e.g. email invites) in a flowchart—faster and safer for experiments.</p>
+      </div>
+    </div>
+    <p style="margin-top:16px;font-size:15px;color:var(--muted)">Analogy: <strong>n8n is the kitchen</strong>; our website is the <strong>restaurant front of house</strong>. Guests never go into the kitchen, but that’s where the meal is prepared.</p>
+    <span class="footer-num">5</span>
+  </section>
+
+  <!-- SLIDE 6 - N8N CHAT -->
+  <section class="slide">
+    <p class="kicker">n8n · Workflow 1</p>
+    <h2>When someone asks a question in chat</h2>
+    <div class="diagram">
+      <div class="flow" style="flex-direction:column;align-items:stretch">
+        <span class="box">1. Visitor types a question on your branded chat page</span>
+        <span class="arrow">↓</span>
+        <span class="box">2. Our website tags the question with <em>which company</em> it belongs to</span>
+        <span class="arrow">↓</span>
+        <span class="box box--highlight">3. n8n: find similar paragraphs in <strong>that company only</strong></span>
+        <span class="arrow">↓</span>
+        <span class="box box--highlight">4. n8n: ask the AI to answer using those paragraphs</span>
+        <span class="arrow">↓</span>
+        <span class="box">5. Friendly answer appears in the chat window</span>
+      </div>
+    </div>
+    <p><strong>Why this matters:</strong> The AI is not “making things up from the whole internet”—it is guided by that organization’s approved content.</p>
+    <span class="footer-num">6</span>
+  </section>
+
+  <!-- SLIDE 7 - N8N INGEST -->
+  <section class="slide">
+    <p class="kicker">n8n · Workflow 2</p>
+    <h2>When a company adds knowledge</h2>
+    <div class="diagram">
+      <div class="flow" style="flex-direction:column;align-items:stretch">
+        <span class="box">1. Admin uploads a document or points to a help page</span>
+        <span class="arrow">↓</span>
+        <span class="box">2. Our system starts a tracked “ingest job” (visible in admin)</span>
+        <span class="arrow">↓</span>
+        <span class="box box--highlight">3. n8n: read text → split into small pieces → convert to searchable “memories”</span>
+        <span class="arrow">↓</span>
+        <span class="box">4. Memories are stored under that company’s name only</span>
+        <span class="arrow">↓</span>
+        <span class="box">5. Admin sees “success” and how many pieces were indexed</span>
+      </div>
+    </div>
+    <p><strong>Business value:</strong> Updating the bot is like updating a FAQ—no code release required once the pipeline is connected.</p>
+    <span class="footer-num">7</span>
+  </section>
+
+  <!-- SLIDE 8 - N8N INVITE -->
+  <section class="slide">
+    <p class="kicker">n8n · Workflow 3</p>
+    <h2>When you invite a teammate</h2>
+    <ul>
+      <li>Owner enters an email and role in the admin panel</li>
+      <li>Our app creates a secure invitation link</li>
+      <li><strong>n8n can send the welcome email</strong> automatically (optional workflow)</li>
+      <li>New person signs in and lands in the right organization</li>
+    </ul>
+    <p class="big-idea">n8n is not only for chat—it is our general <strong>integration layer</strong> for emails and future automations (CRM, Slack, etc.).</p>
+    <span class="footer-num">8</span>
+  </section>
+
+  <!-- SLIDE 9 - SECURITY SIMPLE -->
+  <section class="slide">
+    <p class="kicker">Trust & safety</p>
+    <h2>How we keep companies separate</h2>
+    <div class="grid-2">
+      <div class="card">
+        <h4>Separate memory</h4>
+        <p>Every piece of knowledge is labeled with the company it belongs to.</p>
+      </div>
+      <div class="card">
+        <h4>Separate search</h4>
+        <p>When answering, the system only searches that company’s memories.</p>
+      </div>
+      <div class="card">
+        <h4>Locked admin</h4>
+        <p>Only signed-in staff with the right role can change settings or knowledge.</p>
+      </div>
+      <div class="card">
+        <h4>Secret handshakes</h4>
+        <p>Our website and n8n verify each other with a private key—random people cannot trigger workflows.</p>
+      </div>
+    </div>
+    <span class="footer-num">9</span>
+  </section>
+
+  <!-- SLIDE 10 - DEMO -->
+  <section class="slide">
+    <p class="kicker">Live demo</p>
+    <h2>What to show in 5 minutes</h2>
+    <table class="demo-table">
+      <thead>
+        <tr><th>Step</th><th>Show</th><th>Point to make</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1</td>
+          <td>Admin → switch between two companies</td>
+          <td>“Same product, two completely separate workspaces.”</td>
+        </tr>
+        <tr>
+          <td>2</td>
+          <td>Knowledge page — chunk count healthy</td>
+          <td>“The bot has material to answer from.”</td>
+        </tr>
+        <tr>
+          <td>3</td>
+          <td>Chat as <strong>Art craft</strong> — ask about workshops</td>
+          <td>“Answers match their craft studio content.”</td>
+        </tr>
+        <tr>
+          <td>4</td>
+          <td>Chat as <strong>Demo / NovaMart</strong> — ask about store policy</td>
+          <td>“Same question style, different answers—proves isolation.”</td>
+        </tr>
+        <tr>
+          <td>5</td>
+          <td>Optional: mention n8n runs the “find + answer” steps</td>
+          <td>“Under the hood, n8n is the chef; you just see the plated dish.”</td>
+        </tr>
+      </tbody>
+    </table>
+    <span class="footer-num">10</span>
+  </section>
+
+  <!-- SLIDE 11 - BENEFITS -->
+  <section class="slide">
+    <p class="kicker">Why this approach wins</p>
+    <h2>Benefits for the business</h2>
+    <ul>
+      <li><strong>Faster onboarding</strong> — New client gets a URL, brand, and knowledge base in days, not months</li>
+      <li><strong>Lower engineering cost</strong> — AI logic lives in adjustable workflows, not buried in app code</li>
+      <li><strong>Transparency</strong> — Ingest jobs, analytics, and audit log show what happened</li>
+      <li><strong>Room to grow</strong> — Billing, more languages, Slack handoff can plug into n8n later</li>
+    </ul>
+    <span class="footer-num">11</span>
+  </section>
+
+  <!-- SLIDE 12 - ROADMAP -->
+  <section class="slide">
+    <p class="kicker">Honest status</p>
+    <h2>What’s done & what’s next</h2>
+    <div class="grid-2">
+      <div class="card">
+        <h4>Ready today</h4>
+        <ul style="font-size:14px;margin:0;padding-left:1rem">
+          <li>Multi-company admin & public chat</li>
+          <li>Two demo knowledge bases live</li>
+          <li>Chat automation via n8n working</li>
+          <li>Team invites & audit trail</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h4>Next steps</h4>
+        <ul style="font-size:14px;margin:0;padding-left:1rem">
+          <li>One-click document ingest fully in n8n</li>
+          <li>Lock API keys into n8n credentials</li>
+          <li>Payments (Stripe) & usage limits</li>
+        </ul>
+      </div>
+    </div>
+    <span class="footer-num">12</span>
+  </section>
+
+  <!-- SLIDE 13 - CLOSE -->
+  <section class="slide slide--cover" style="justify-content:center">
+    <p class="kicker" style="color:#99f6e4">Thank you</p>
+    <h1 style="font-size:36px">Questions?</h1>
+    <p class="tagline" style="margin-top:24px">
+      Website: multi-tenant-support-saas.vercel.app<br>
+      Remember: <strong>n8n</strong> prepares answers; <strong>our app</strong> delivers a safe, branded experience per company.
+    </p>
+  </section>
+
+</body>
+</html>
