@@ -8,6 +8,23 @@ type AcceptPayload = {
   token?: string;
 };
 
+/** All verified emails on the Clerk user (primary is not always the one used to sign in). */
+function clerkEmails(clerkUser: NonNullable<Awaited<ReturnType<typeof currentUser>>>): string[] {
+  const seen = new Set<string>();
+  const list: string[] = [];
+  const add = (value: string | undefined | null) => {
+    const normalized = value?.trim().toLowerCase();
+    if (!normalized || !normalized.includes("@") || seen.has(normalized)) return;
+    seen.add(normalized);
+    list.push(normalized);
+  };
+  add(clerkUser.primaryEmailAddress?.emailAddress);
+  for (const entry of clerkUser.emailAddresses ?? []) {
+    add(entry.emailAddress);
+  }
+  return list;
+}
+
 export async function POST(request: Request) {
   try {
     const { userId } = await auth();
@@ -22,9 +39,12 @@ export async function POST(request: Request) {
     }
 
     const clerkUser = await currentUser();
-    const email =
-      clerkUser?.primaryEmailAddress?.emailAddress ?? clerkUser?.emailAddresses[0]?.emailAddress;
-    if (!email) {
+    if (!clerkUser) {
+      return NextResponse.json({ error: "Signed-in user not found." }, { status: 401 });
+    }
+
+    const signedInEmails = clerkEmails(clerkUser);
+    if (!signedInEmails.length) {
       return NextResponse.json({ error: "Signed-in account has no email." }, { status: 400 });
     }
 
@@ -34,8 +54,7 @@ export async function POST(request: Request) {
     }
 
     const tokenHash = createHash("sha256").update(token).digest("hex");
-    const normalizedEmail = email.toLowerCase();
-    const displayName = clerkUser?.fullName ?? clerkUser?.firstName ?? null;
+    const displayName = clerkUser.fullName ?? clerkUser.firstName ?? null;
 
     const result = await sql.begin(async (tx) => {
       const [invite] = await tx<{
@@ -62,9 +81,15 @@ export async function POST(request: Request) {
       if (!invite) {
         throw new Error("Invitation is invalid or expired.");
       }
-      if (invite.email.toLowerCase() !== normalizedEmail) {
-        throw new Error("Invitation email does not match the signed-in account.");
+
+      const inviteEmail = invite.email.trim().toLowerCase();
+      if (!signedInEmails.includes(inviteEmail)) {
+        throw new Error(
+          `Invitation email does not match the signed-in account. Invitation is for ${inviteEmail}; Clerk account has: ${signedInEmails.join(", ")}.`,
+        );
       }
+
+      const normalizedEmail = inviteEmail;
 
       const [bySubject] = await tx<{ id: string }[]>`
         select id from public.users where auth_subject = ${userId} limit 1
@@ -78,7 +103,7 @@ export async function POST(request: Request) {
         const [updated] = await tx<{ id: string }[]>`
           update public.users
           set
-            email = ${email},
+            email = ${normalizedEmail},
             display_name = coalesce(${displayName}, display_name),
             auth_provider = 'clerk',
             updated_at = now()
@@ -101,7 +126,7 @@ export async function POST(request: Request) {
       } else {
         const [created] = await tx<{ id: string }[]>`
           insert into public.users (email, display_name, auth_provider, auth_subject)
-          values (${email}, ${displayName}, 'clerk', ${userId})
+          values (${normalizedEmail}, ${displayName}, 'clerk', ${userId})
           returning id
         `;
         appUserId = created?.id ?? null;
@@ -129,6 +154,7 @@ export async function POST(request: Request) {
         orgId: invite.orgId,
         orgName: invite.orgName,
         role: invite.role,
+        email: normalizedEmail,
       };
     });
 
@@ -138,7 +164,7 @@ export async function POST(request: Request) {
       action: "invitation.accepted",
       resourceType: "invitation",
       resourceId: result.invitationId,
-      metadata: { role: result.role, email: normalizedEmail },
+      metadata: { role: result.role, email: result.email },
     });
 
     return NextResponse.json({

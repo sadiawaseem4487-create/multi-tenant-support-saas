@@ -14,6 +14,7 @@
     "db:backfill-docs-org": "node --env-file=.env.local scripts/backfill-documents-org.mjs",
     "verify:tenant-isolation": "node --env-file=.env.local scripts/verify-tenant-isolation.mjs",
     "ingest:kb-url": "node --env-file=.env.local scripts/ingest-kb-url.mjs",
+    "ingest:all-demos": "node scripts/ingest-all-demo-orgs.mjs",
     "rotate:secrets": "node scripts/rotate-secrets.mjs"
   },
   "dependencies": {

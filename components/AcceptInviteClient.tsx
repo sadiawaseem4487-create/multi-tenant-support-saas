@@ -6,13 +6,14 @@ import { useState } from "react";
 type Props = {
   token: string;
   signedIn: boolean;
+  signedInEmails?: string[];
 };
 
 type AcceptResponse =
   | { ok: true; orgId: string; orgName: string; role: string }
   | { error: string };
 
-export function AcceptInviteClient({ token, signedIn }: Props) {
+export function AcceptInviteClient({ token, signedIn, signedInEmails = [] }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<{ orgId: string; orgName: string; role: string } | null>(
@@ -62,8 +63,14 @@ export function AcceptInviteClient({ token, signedIn }: Props) {
     <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
       <h2 className="text-xl font-semibold text-slate-900">Accept invitation</h2>
       <p className="mt-2 text-sm text-slate-600">
-        Click below to join the organization from your invite.
+        Click below to join the organization from your invite. You must be signed in with the
+        same email that received the invitation.
       </p>
+      {signedInEmails.length > 0 ? (
+        <p className="mt-2 text-xs text-slate-500">
+          Signed in as: <strong>{signedInEmails.join(", ")}</strong>
+        </p>
+      ) : null}
 
       <button
         type="button"

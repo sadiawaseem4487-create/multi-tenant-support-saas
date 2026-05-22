@@ -22,9 +22,23 @@ export default async function AcceptInvitePage({
     );
   }
 
+  const signedInEmails = user
+    ? [
+        user.primaryEmailAddress?.emailAddress,
+        ...(user.emailAddresses?.map((e) => e.emailAddress) ?? []),
+      ]
+        .filter((e): e is string => Boolean(e?.trim()))
+        .map((e) => e.trim().toLowerCase())
+        .filter((e, i, arr) => arr.indexOf(e) === i)
+    : [];
+
   return (
     <main className="mx-auto w-full max-w-2xl px-4 py-12">
-      <AcceptInviteClient token={token} signedIn={Boolean(user)} />
+      <AcceptInviteClient
+        token={token}
+        signedIn={Boolean(user)}
+        signedInEmails={signedInEmails}
+      />
     </main>
   );
 }
