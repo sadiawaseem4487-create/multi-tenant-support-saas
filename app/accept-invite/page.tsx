@@ -1,5 +1,6 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { AcceptInviteClient } from "@/components/AcceptInviteClient";
+import { lookupInviteByToken } from "@/lib/invite-preview";
 
 export default async function AcceptInvitePage({
   searchParams,
@@ -7,9 +8,8 @@ export default async function AcceptInvitePage({
   searchParams: Promise<{ token?: string }>;
 }) {
   const { token } = await searchParams;
-  const user = await currentUser();
 
-  if (!token) {
+  if (!token?.trim()) {
     return (
       <main className="mx-auto w-full max-w-2xl px-4 py-12">
         <div className="rounded-2xl border border-rose-200 bg-rose-50 p-6 text-rose-900 shadow-sm">
@@ -22,6 +22,21 @@ export default async function AcceptInvitePage({
     );
   }
 
+  const invite = await lookupInviteByToken(token);
+  if (!invite) {
+    return (
+      <main className="mx-auto w-full max-w-2xl px-4 py-12">
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 p-6 text-rose-900 shadow-sm">
+          <h2 className="text-xl font-semibold">Invitation not available</h2>
+          <p className="mt-2 text-sm">
+            This link is invalid, already used, or expired. Ask your admin to send a new invitation.
+          </p>
+        </div>
+      </main>
+    );
+  }
+
+  const user = await currentUser();
   const signedInEmails = user
     ? [
         user.primaryEmailAddress?.emailAddress,
@@ -38,6 +53,7 @@ export default async function AcceptInvitePage({
         token={token}
         signedIn={Boolean(user)}
         signedInEmails={signedInEmails}
+        invite={invite}
       />
     </main>
   );
