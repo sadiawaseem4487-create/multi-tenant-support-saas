@@ -25,8 +25,6 @@ export default async function SignInPage({
       <SignIn
         forceRedirectUrl={afterAuth}
         fallbackRedirectUrl={afterAuth}
-        signInForceRedirectUrl={afterAuth}
-        signUpForceRedirectUrl={afterAuth}
         initialValues={email ? { emailAddress: email } : undefined}
         appearance={{
           elements: {
